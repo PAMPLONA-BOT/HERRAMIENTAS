@@ -839,6 +839,8 @@
   function formatearFechaExcel(valor) {
     if (typeof valor === 'number') {
       const fecha = new Date(Math.round((valor - 25569) * 86400 * 1000));
+      // Se suma un día para corregir el desfase de zona horaria al convertir la fecha de Excel.
+      fecha.setDate(fecha.getDate() + 1);
       return formatearFecha(fecha);
     }
     if (typeof valor === 'string' && valor.includes('/')) return valor;
@@ -886,7 +888,7 @@
         const indiceFechaFiltrada = encabezadoFiltrado.findIndex(col => col.toLowerCase().includes('programaci'));
         if (indiceFechaFiltrada !== -1) nuevaFila[indiceFechaFiltrada] = fechaFormateada;
         const dias = diferenciaDias(fechaFormateada);
-        nuevaFila.push(dias >= 4 ? 'Descarga urgente' : dias === 3 ? 'Favor descargar' : 'A tiempo');
+        nuevaFila.push(dias >= 3 ? 'Descarga urgente' : dias === 2 ? 'Favor descargar' : 'A tiempo');
         nuevaFila.push(String(row[0]).trim().length > 9 ? 'LECTURA' : 'SCR');
         return nuevaFila;
       });
@@ -980,28 +982,25 @@
 
   // Manejar el modal de confirmación
   document.getElementById('btnDescargar').addEventListener('click', () => {
-    // Descargar el archivo
+    if (!workbookCompleto) return;
     XLSX.writeFile(workbookCompleto, "datos_completos.xlsx");
     document.getElementById('confirmModal').style.display = 'none';
     mostrarAlerta("Archivo completo descargado correctamente.", 'exito');
     
-    // Habilitar el procesamiento en la pestaña Unificar
-    document.getElementById('processButtonUnificar').disabled = false;
     document.getElementById('estadoArchivo').textContent = 'Datos cargados - Archivo descargado';
+    prepararPestañaUnificar();
   });
 
   document.getElementById('btnTrabajar').addEventListener('click', () => {
-    // Solo trabajar sin descargar
+    if (!workbookCompleto) return;
     document.getElementById('confirmModal').style.display = 'none';
     mostrarAlerta("Archivo listo para trabajar en la pestaña Unificar.", 'exito');
     
-    // Habilitar el procesamiento en la pestaña Unificar
-    document.getElementById('processButtonUnificar').disabled = false;
     document.getElementById('estadoArchivo').textContent = 'Datos cargados - Listo para trabajar';
+    prepararPestañaUnificar();
   });
 
   document.getElementById('btnCancelar').addEventListener('click', () => {
-    // Cancelar y no hacer nada
     document.getElementById('confirmModal').style.display = 'none';
     workbookCompleto = null;
     document.getElementById('estadoArchivo').textContent = 'No hay datos cargados';
@@ -1057,18 +1056,15 @@
       mapaSCR.set(correria, { tpl, estado });
     });
 
-    // Índices para las columnas de estado
     const indices = { 
       D: 3, E: 4, H: 7, I: 8, J: 9, M: 12, W: 22, AA: 26, AN: 39, AU: 46, AV: 47,
       C: 2, // Estado Tarea
-      D: 3  // Estado Comunicación
     };
 
     const encabezadoBase = datosComparar[0];
     
-    // MODIFICACIÓN: Filtrar datosComparar para eliminar filas donde M es "I" y AV es "D"
     const datosCompararFiltrados = datosComparar.filter((row, index) => {
-     if (index === 0) return true; // Mantener el encabezado
+     if (index === 0) return true;
       
       const valorM = row[indices.M]?.toString().trim().toUpperCase();
       const valorAV = row[indices.AV]?.toString().trim().toUpperCase();
@@ -1089,7 +1085,6 @@
     ];
 
     const filas = [];
-    // MODIFICACIÓN: Usar datosCompararFiltrados en lugar de datosComparar
     datosCompararFiltrados.slice(1).forEach(row => {
       const correria = row[3];
       if (datosSCR.includes(correria)) {
@@ -1116,6 +1111,20 @@
   let workbookUnificar, sheetNamesUnificar = [];
   let processedSheetsUnificar = {};
   let correriaFechaMapUnificar = {};
+
+  // Función NUEVA para configurar la pestaña "Unificar"
+  function prepararPestañaUnificar() {
+    if (!workbookCompleto) return;
+
+    workbookUnificar = workbookCompleto;
+    sheetNamesUnificar = workbookUnificar.SheetNames.slice();
+
+    renderSelectorsUnificar();
+    populateDuplicateDropdownUnificar();
+    
+    document.getElementById('duplicateControls').style.display = 'block';
+    document.getElementById('processButtonUnificar').disabled = false;
+  }
 
   // Funciones del Unificador
   function renderSelectorsUnificar() {
@@ -1333,8 +1342,6 @@
     const panel = document.getElementById('panelAyuda');
     panel.classList.toggle('oculto');
     
-    // Cambiar ícono y texto del botón
-    const icono = this.querySelector('svg');
     const estaVisible = !panel.classList.contains('oculto');
     
     if (estaVisible) {
@@ -1357,7 +1364,7 @@
   // Función para aplicar configuraciones recomendadas
   function aplicarConfiguracionRecomendada() {
     if (!workbookUnificar || !sheetNamesUnificar.length) {
-      mostrarAlerta("Primero debe cargar los datos en la pestaña Unificar", 'error');
+      mostrarAlerta("Primero debe cargar los datos desde la pestaña 'Gestor Sirius'", 'error');
       return;
     }
 
@@ -1368,15 +1375,12 @@
       const includeSelect = document.getElementById(`selectorIncludeUnificar${idxSirius}`);
       
       if (mainSelect && includeSelect) {
-        // Seleccionar Terminal como principal
         for (let i = 0; i < mainSelect.options.length; i++) {
           if (mainSelect.options[i].text.toLowerCase().includes('terminal')) {
             mainSelect.selectedIndex = i;
             break;
           }
         }
-        
-        // Seleccionar columnas a incluir
         Array.from(includeSelect.options).forEach(option => {
           const text = option.text.toLowerCase();
           option.selected = text.includes('correría') || 
@@ -1394,19 +1398,17 @@
       const includeSelect = document.getElementById(`selectorIncludeUnificar${idxSiriusDup}`);
       
       if (mainSelect && includeSelect) {
-        // Seleccionar Tipo como principal
         for (let i = 0; i < mainSelect.options.length; i++) {
           if (mainSelect.options[i].text.toLowerCase().includes('tipo')) {
             mainSelect.selectedIndex = i;
             break;
           }
         }
-        
-        // Seleccionar columnas a incluir
         Array.from(includeSelect.options).forEach(option => {
           const text = option.text.toLowerCase();
           option.selected = text.includes('correría') || 
                           text.includes('descripción') || 
+                          text.includes('ots') || 
                           text.includes('terminal') || 
                           text.includes('fecha de programación');
         });
@@ -1420,65 +1422,57 @@
       const includeSelect = document.getElementById(`selectorIncludeUnificar${idxComparados}`);
       
       if (mainSelect && includeSelect) {
-        // Seleccionar Correrías como principal
         for (let i = 0; i < mainSelect.options.length; i++) {
           if (mainSelect.options[i].text.toLowerCase().includes('correria')) {
             mainSelect.selectedIndex = i;
             break;
           }
         }
-        
-        // Seleccionar columnas a incluir
         Array.from(includeSelect.options).forEach(option => {
           const text = option.text.toLowerCase();
           option.selected = text.includes('descripción') ||
-                          text.includes('cliente') ||  
-                          text === 'nombre' || 
+                          text.includes('cliente') || 
+                          text.includes('medidor') || 
+                          text === 'nombre' ||  
                           text.includes('ciclo') || 
                           text === 'estado comunicación';
         });
       }
     }
 
-    // Configuración para Datos Comparados duplicada
-    const idxComparadosDup = sheetNamesUnificar.findIndex(name => name.includes("Datos Comparados") && name.includes("copia"));
+    // Configuración para Datos Sirius duplicada 2
+    const idxComparadosDup = sheetNamesUnificar.findIndex(name => name.includes("Datos Sirius") && name.includes("copia2"));
     if (idxComparadosDup !== -1) {
       const mainSelect = document.getElementById(`selectorMainUnificar${idxComparadosDup}`);
       const includeSelect = document.getElementById(`selectorIncludeUnificar${idxComparadosDup}`);
       
       if (mainSelect && includeSelect) {
-        // Seleccionar ESTADO como principal (exacto)
         for (let i = 0; i < mainSelect.options.length; i++) {
             if (mainSelect.options[i].text.trim().toLowerCase() === 'estado') {
                 mainSelect.selectedIndex = i;
                 break;
               }
             }
-            
-            // Seleccionar columnas a incluir
-            Array.from(includeSelect.options).forEach(option => {
-              const text = option.text.toLowerCase();
-              option.selected = text.includes('correría') || 
-                              text.includes('descripción') | 
-                              text.includes('cliente') ||   
-                              text === 'estado comunicación' || 
-                              text.includes('tpl');
-            });
-          }
-        }
+        Array.from(includeSelect.options).forEach(option => {
+          const text = option.text.toLowerCase();
+          option.selected = text.includes('correría') || 
+                          text.includes('descripción') ||
+                          text.includes('ots') || 
+                          text.includes('terminal') || 
+                          text.includes('fecha de programación');
+        });
+      }
+    }
 
     mostrarAlerta("Configuración recomendada aplicada. Verifique las selecciones antes de procesar.", 'exito');
   }
 
   // Event listeners del Unificador
   document.getElementById('processButtonUnificar').addEventListener('click', () => {
-    if (!workbookCompleto) {
-      mostrarAlerta("Primero debe generar el archivo con 'Descargar Todo' en la pestaña Gestor Sirius", 'error');
+    if (!workbookUnificar) {
+      mostrarAlerta("Primero debe generar el archivo en la pestaña 'Gestor Sirius'", 'error');
       return;
     }
-
-    workbookUnificar = workbookCompleto;
-    sheetNamesUnificar = workbookUnificar.SheetNames.slice();
     
     processedSheetsUnificar = {};
     correriaFechaMapUnificar = {};
@@ -1502,7 +1496,6 @@
       renderPreviewUnificar(`previewUnificar${idx}`, result);
     });
     
-    document.getElementById('duplicateControls').style.display = 'block';
     document.getElementById('downloadButtonUnificar').disabled = false;
     mostrarAlerta("Datos unificados y procesados correctamente.", 'exito');
   });
@@ -1528,14 +1521,52 @@
     mostrarAlerta(`Hoja "${name}" duplicada como "${newName}"`, 'exito');
   });
 
+  // =============================================
+  // === CAMBIO PRINCIPAL: LÓGICA DE DESCARGA UNIFICADA ===
+  // =============================================
   document.getElementById('downloadButtonUnificar').addEventListener('click', () => {
     const newWb = XLSX.utils.book_new();
-    Object.entries(processedSheetsUnificar).forEach(([nm, dt]) => {
-      const ws = XLSX.utils.json_to_sheet(dt);
-      XLSX.utils.book_append_sheet(newWb, ws, nm.substring(0,31));
+    let combinedSiriusDuplicatesData = [];
+    const regularSheets = {};
+
+    // 1. Separar las hojas procesadas en "duplicados de Sirius" y "regulares"
+    Object.entries(processedSheetsUnificar).forEach(([sheetName, sheetData]) => {
+      if (sheetName.startsWith('Datos Sirius_copia')) {
+        // Si es una copia, añadimos sus datos al array combinado
+        combinedSiriusDuplicatesData.push(...sheetData);
+      } else {
+        // Si no, la guardamos como una hoja regular
+        regularSheets[sheetName] = sheetData;
+      }
     });
-    XLSX.writeFile(newWb, 'procesado_unificado.xlsx');
-    mostrarAlerta("Archivo unificado descargado correctamente.", 'exito');
+
+    // 2. Añadir las hojas regulares al nuevo libro de Excel
+    Object.entries(regularSheets).forEach(([name, data]) => {
+      const ws = XLSX.utils.json_to_sheet(data);
+      XLSX.utils.book_append_sheet(newWb, ws, name.substring(0, 31));
+    });
+
+    // 3. Si hay datos en el array de duplicados, los unificamos en una sola hoja
+    if (combinedSiriusDuplicatesData.length > 0) {
+      // Opcional: Ordenar los datos combinados por la primera columna para mantener la consistencia
+      if (combinedSiriusDuplicatesData.length > 0) {
+          const mainColumnKey = Object.keys(combinedSiriusDuplicatesData[0])[0];
+          combinedSiriusDuplicatesData.sort((a, b) => {
+              const valA = String(a[mainColumnKey] || '');
+              const valB = String(b[mainColumnKey] || '');
+              return valA.localeCompare(valB);
+          });
+      }
+      
+      // Crear la hoja de cálculo con todos los datos de los duplicados
+      const combinedWs = XLSX.utils.json_to_sheet(combinedSiriusDuplicatesData);
+      // Añadir esta hoja combinada al libro con un nombre claro
+      XLSX.utils.book_append_sheet(newWb, combinedWs, "Sirius Duplicados (Unificado)");
+    }
+
+    // 4. Descargar el archivo final
+    XLSX.writeFile(newWb, 'procesado_unificado_final.xlsx');
+    mostrarAlerta("Archivo unificado final descargado correctamente.", 'exito');
   });
 
   // =============================================
@@ -1550,12 +1581,9 @@
       const tabId = tab.getAttribute('data-tab');
       document.getElementById(tabId).classList.add('active');
       
-      // Cuando se activa la pestaña Unificar, cargar los selectores si hay datos
-      if (tabId === 'unificar' && workbookCompleto) {
-        workbookUnificar = workbookCompleto;
-        sheetNamesUnificar = workbookUnificar.SheetNames.slice();
-        renderSelectorsUnificar();
-        populateDuplicateDropdownUnificar();
+      // Cuando se activa la pestaña Unificar, preparar la UI si hay datos y no se ha hecho ya.
+      if (tabId === 'unificar' && workbookCompleto && !document.getElementById('selectorsUnificar').hasChildNodes()) {
+        prepararPestañaUnificar();
       }
     });
   });
