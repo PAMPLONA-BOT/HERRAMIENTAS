@@ -60,46 +60,151 @@
       box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
       transition: all 0.3s ease;
     }
+    .error {
+      color: #f87171;
+    }
+    .success {
+      color: #4ade80;
+    }
+    .info {
+      color: #38bdf8;
+    }
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    #limpiar {
+      background: #f87171; /* Rojo */
+      color: white;
+    }
+    #limpiar:hover {
+      background: #ef4444; /* Rojo más oscuro al pasar el mouse */
+    }
   </style>
 </head>
 <body>
-  <h2>📍 GPS Decoder con Símbolos</h2>
-  <p>Pega el código secreto: <code>▄◦▒▓▐▌◘◄...</code></p>
+  <h2>📍 GPS Decoder Inteligente</h2>
+  <p>Pega el mensaje completo con las coordenadas codificadas</p>
 
-  <input type="text" id="codigo" placeholder="Ingresa tu código en símbolos..." />
+  <input type="text" id="codigo" placeholder="Ejemplo: 🪫 Fin de labor... HKIHAZAJIL... MHCKBVAACCZ..." />
   <br />
-  <button onclick="decodificar()">Mostrar en mapa</button>
+  <div class="button-container">
+    <button onclick="decodificar()">Extraer y mostrar coordenadas</button>
+    <button id="limpiar" onclick="limpiarConsulta()">Limpiar</button>
+  </div>
 
   <div id="resultado"></div>
   <iframe id="mapa"></iframe>
 
   <script>
-    const graficoInv = {
-      "░": "0", "▒": "1", "▓": "2", "█": "3", "▌": "4",
-      "▐": "5", "▀": "6", "▄": "7", "■": "8", "□": "9",
-      "◦": ".", "◘": ",", "◄": "-"
+    // Mapa de decodificación (letra -> símbolo/número)
+    const mapaDecodificacion = {
+      "F": "0", "G": "1", "C": "2", "I": "3", "V": "4",
+      "A": "5", "B": "6", "H": "7", "Z": "8", "J": "9",
+      "K": ".", "L": ",", "M": "-"
     };
+
+    function limpiarConsulta() {
+      document.getElementById('codigo').value = '';
+      document.getElementById('resultado').innerHTML = '';
+      document.getElementById('mapa').style.display = 'none';
+    }
+
+    function extraerCodigo(texto) {
+      // Busca patrones de letras mayúsculas consecutivas (mínimo 8 caracteres)
+      const patron = /[A-Z]{8,}/g;
+      const coincidencias = texto.match(patron) || [];
+      
+      // Tomamos las dos primeras coincidencias (fecha y hora)
+      if (coincidencias.length >= 2) {
+        return coincidencias[0] + coincidencias[1];
+      }
+      return null;
+    }
 
     function decodificar() {
       const input = document.getElementById('codigo').value.trim();
-      let resultado = '';
-      for (const simbolo of input) {
-        resultado += graficoInv[simbolo] || '';
+      const resultadoDiv = document.getElementById('resultado');
+      const mapaFrame = document.getElementById("mapa");
+      
+      // Resetear visualización
+      resultadoDiv.innerHTML = '';
+      mapaFrame.style.display = "none";
+
+      if (!input) {
+        resultadoDiv.innerHTML = '<span class="error">⚠️ Por favor ingresa un mensaje</span>';
+        return;
       }
 
+      // Extraer el código automáticamente
+      const codigoExtraido = extraerCodigo(input);
+      
+      if (!codigoExtraido) {
+        resultadoDiv.innerHTML = '<span class="error">⚠️ No se encontró código de coordenadas en el mensaje</span>';
+        return;
+      }
+
+      // Mostrar qué código se extrajo
+      resultadoDiv.innerHTML += `
+        <span class="info">
+          🔍 Código detectado: <strong>${codigoExtraido}</strong>
+        </span><br><br>
+      `;
+
+      let resultado = '';
+      let caracteresInvalidos = [];
+      
+      // Decodificar cada carácter
+      for (const letra of codigoExtraido) {
+        if (mapaDecodificacion[letra]) {
+          resultado += mapaDecodificacion[letra];
+        } else {
+          caracteresInvalidos.push(letra);
+        }
+      }
+
+      // Mostrar advertencia si hay caracteres no reconocidos
+      if (caracteresInvalidos.length > 0) {
+        resultadoDiv.innerHTML += `
+          <span class="error">
+            ⚠️ Caracteres no reconocidos: ${caracteresInvalidos.join(', ')}<br>
+            (Se ignoraron en la decodificación)
+          </span><br><br>
+        `;
+      }
+
+      // Verificar formato de coordenadas
       const partes = resultado.split(",");
       if (partes.length === 2 && !isNaN(partes[0]) && !isNaN(partes[1])) {
-        const lat = partes[0];
-        const lon = partes[1];
-        document.getElementById('resultado').innerHTML = `📍 Coordenada: <strong>${lat}, ${lon}</strong>`;
-        const mapa = document.getElementById("mapa");
-        mapa.src = `https://www.google.com/maps?q=${lat},${lon}&output=embed`;
-        mapa.style.display = "block";
+        const lat = parseFloat(partes[0]).toFixed(7);
+        const lon = parseFloat(partes[1]).toFixed(7);
+        
+        resultadoDiv.innerHTML += `
+          <span class="success">
+            ✅ Coordenada decodificada: <strong>${lat}, ${lon}</strong>
+          </span>
+        `;
+        
+        // Mostrar mapa
+        mapaFrame.src = `https://www.google.com/maps?q=${lat},${lon}&z=15&output=embed`;
+        mapaFrame.style.display = "block";
       } else {
-        document.getElementById('resultado').innerText = "⚠️ Código inválido. Verifica los símbolos.";
-        document.getElementById("mapa").style.display = "none";
+        resultadoDiv.innerHTML += `
+          <span class="error">
+            ⚠️ Formato inválido. El código debe decodificar a "latitud,longitud"<br>
+            Cadena decodificada: ${resultado || '[vacío]'}
+          </span>
+        `;
       }
     }
+
+    // Permitir decodificar con Enter
+    document.getElementById('codigo').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        decodificar();
+      }
+    });
   </script>
 </body>
 </html>
