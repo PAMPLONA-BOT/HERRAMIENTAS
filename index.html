@@ -169,5 +169,25 @@
             });
         });
     </script>
+
+    <!-- ======== SCRIPT PARA REGISTRAR EL SERVICE WORKER ======== -->
+    <script>
+        // Comprobamos si el navegador soporta Service Workers
+        if ('serviceWorker' in navigator) {
+            // Esperamos a que la página cargue completamente para no retrasar el renderizado
+            window.addEventListener('load', () => {
+                navigator.serviceWorker
+                    .register('./sw.js') // Registramos nuestro archivo sw.js
+                    .then(registration => {
+                        console.log('Service Worker registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Fallo al registrar el Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+    <!-- ========================================================== -->
+
 </body>
 </html>
