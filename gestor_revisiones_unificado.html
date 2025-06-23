@@ -23,8 +23,9 @@
       gap: 1rem;
       flex-wrap: wrap;
       margin: 1rem 0;
+      align-items: center; /* Para alinear verticalmente los botones */
     }
-    button {
+    button, a.button-like button { /* Aplicar estilo a ambos */
       background: linear-gradient(to right, #06b6d4, #3b82f6);
       border: none;
       color: white;
@@ -33,14 +34,28 @@
       border-radius: 8px;
       cursor: pointer;
       transition: 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
-    button:hover {
+    button:hover, a.button-like button:hover {
       background: linear-gradient(to right, #0ea5e9, #60a5fa);
     }
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
+    /* Estilo para el botón de la plantilla */
+    a.button-like button.btn-template {
+        background: linear-gradient(to right, #16a34a, #22c55e);
+    }
+    a.button-like button.btn-template:hover {
+        background: linear-gradient(to right, #15803d, #16a34a);
+    }
+    a.button-like {
+        text-decoration: none; /* Quitar subrayado del enlace */
+    }
+
     #preview, #preview-json {
       width: 100%;
       max-width: 800px;
@@ -94,6 +109,11 @@
   <h2>EJECUTOR Y ANALISTA DE R_REVISIONES</h2>
   <input type="file" id="fileInput" />
   <div class="botones">
+    <!-- BOTÓN DE DESCARGA DE PLANTILLA AÑADIDO -->
+    <a href="plantilla_revisiones.xlsx" download="plantilla_revisiones.xlsx" class="button-like">
+        <button type="button" class="btn-template">📥 Descargar Plantilla</button>
+    </a>
+    
     <button onclick="procesarExcel()">Procesar</button>
     <button id="btnDescargar" onclick="descargarExcel()" disabled>Descargar Excel</button>
     <button id="btnGenerarJson" onclick="irAGenerador()" disabled>Generar JSON</button>
@@ -162,9 +182,30 @@ function procesarExcel() {
 
     const resultado = Object.entries(mapa).map(([cliente, entradas]) => {
       entradas.sort((a, b) => {
-        const fechaA = new Date(a.fecha.replace(/\*/g, '').split('/').reverse().join('-'));
-        const fechaB = new Date(b.fecha.replace(/\*/g, '').split('/').reverse().join('-'));
-        return fechaA - fechaB;
+        try {
+            // Manejo robusto de fechas con diferentes formatos
+            const parseDate = (dateStr) => {
+                if (!dateStr || typeof dateStr !== 'string') return new Date(0); // Fecha inválida
+                const cleanedDate = dateStr.replace(/\*/g, '');
+                if (cleanedDate.includes('/')) {
+                    const parts = cleanedDate.split('/');
+                    // Asumir formato dd/mm/yyyy
+                    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                }
+                // Si no es el formato esperado, intenta parsearlo directamente
+                return new Date(cleanedDate);
+            };
+
+            const fechaA = parseDate(a.fecha);
+            const fechaB = parseDate(b.fecha);
+
+            if (isNaN(fechaA.getTime()) || isNaN(fechaB.getTime())) return 0; // No ordenar si las fechas son inválidas
+            
+            return fechaA - fechaB;
+        } catch(error) {
+            console.warn("Error al parsear fecha:", a.fecha, b.fecha);
+            return 0;
+        }
       });
 
       const todoTexto = entradas.map(e => e.texto.trim()).join('\n\n');
