@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Histórico de Consumo Eléctrico</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome correcto -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --primary-hover: #003d82;
+            --secondary-color: #6c757d;
+            --secondary-hover: #5a6268;
+            --danger-color: #dc3545;
+            --danger-hover: #bd2130;
+            --warning-color: #ffc107;
+            --warning-hover: #e0a800;
+            --info-color: #17a2b8;
+            --info-hover: #138496;
+            --success-color: #28a745;
+            --success-hover: #218838;
+            --light-gray: #f8f9fa;
+            --border-color: #dee2e6;
+            --text-color: #212529;
+            --text-light: #6c757d;
+            --electric-blue: #0077b6;
+            --electric-yellow: #ffd700;
+        }
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f5f7fa;
+            background-image: linear-gradient(to bottom, #f5f7fa 0%, #e4e8ed 100%);
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 25px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-top: 5px solid var(--electric-blue);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+        }
+        
+        .header::after {
+            content: "";
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90px;
+            height: 3px;
+            background: var(--electric-blue);
+        }
+        
+        h1 {
+            color: var(--electric-blue);
+            margin: 0 0 8px;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        
+        .subtitle {
+            color: var(--text-light);
+            font-size: 0.60rem;
+            margin-bottom: 14px;
+        }
+        
+        .logo {
+            font-weight: 600;
+            color: var(--electric-blue);
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 13px;
+        }
+        
+        .logo::before {
+            content: "⚡";
+            margin-right: 10px;
+            font-size: 1.5rem;
+        }
+        
+        h2 {
+            color: var(--electric-blue);
+            font-size: 1.3rem;
+            margin: 25px 0 12px;
+            padding-bottom: 9px;
+            border-bottom: 2px solid var(--border-color);
+            font-weight: 400;
+        }
+        
+        .description {
+            text-align: center;
+            color: var(--text-light);
+            margin-bottom: 25px;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+        
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .upload-card {
+            border: 2px solid var(--border-color);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .upload-card:hover {
+            border-color: var(--electric-blue);
+            box-shadow: 0 5px 15px rgba(0, 119, 182, 0.1);
+            transform: translateY(-3px);
+        }
+        
+        .upload-card.active {
+            border-color: var(--electric-blue);
+            background: rgba(0, 119, 182, 0.03);
+        }
+        
+        .upload-card.active::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--electric-blue);
+        }
+        
+        .upload-card h3 {
+            margin: 0 0 10px;
+            font-size: 11px;
+            color: var(--electric-blue);
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .upload-card h3::before {
+            content: "📊";
+            margin-right: 7px;
+            font-size: 15px;
+        }
+        
+        .upload-card.operarios h3::before {
+            content: "👷";
+        }
+        
+        .file-info {
+            font-size: 11px;
+            color: var(--text-light);
+            margin-top: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 5px;
+            background: var(--light-gray);
+            border-radius: 4px;
+        }
+        
+        .btn {
+            background-color: var(--electric-blue);
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 9.4px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 90px;
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn i {
+            margin-right: 7px;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary-color);
+        }
+        
+        .btn-secondary:hover {
+            background-color: var(--secondary-hover);
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+        }
+        
+        .btn-danger:hover {
+            background-color: var(--danger-hover);
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: var(--text-color);
+        }
+        
+        .btn-warning:hover {
+            background-color: var(--warning-hover);
+            color: var(--text-color);
+        }
+        
+        .btn-info {
+            background-color: var(--info-color);
+        }
+        
+        .btn-info:hover {
+            background-color: var(--info-hover);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+        }
+        
+        .btn-success:hover {
+            background-color: var(--success-hover);
+        }
+        
+        .btn-disabled {
+            background-color: #adb5bd;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .btn-small {
+            padding: 8px 15px;
+            font-size: 13px;
+            min-width: auto;
+        }
+        
+        #progressBar {
+            width: 100%;
+            background-color: var(--light-gray);
+            border-radius: 6px;
+            margin: 25px 0;
+            display: none;
+            overflow: hidden;
+            height: 25px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        #progressBarFill {
+            height: 100%;
+            background: linear-gradient(to right, var(--electric-blue), #00a8e8);
+            border-radius: 6px;
+            width: 0%;
+            text-align: center;
+            line-height: 25px;
+            color: white;
+            font-size: 13px;
+            font-weight: 500;
+            transition: width 0.5s ease;
+            box-shadow: 0 2px 5px rgba(0, 119, 182, 0.2);
+        }
+        
+        #results {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 9999;
+            margin-top: 25px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: none;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        #results h3 {
+            margin-top: 0;
+            color: var(--electric-blue);
+            font-size: 1.2rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        #resultText {
+            white-space: pre-line;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        
+        .status-ok {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-opcional {
+            background-color: #e2e3e5;
+            color: #383d41;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 17px;
+                margin: 12px;
+            }
+            
+            .upload-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 90%;
+                margin-bottom: 9px;
+            }
+        }
+        
+        /* Efecto de "energía" para botones principales */
+        .btn-electric {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-electric::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                to right,
+                rgba(255, 255, 255, 0) 0%,
+                rgba(255, 255, 255, 0.8) 50%,
+                rgba(255, 255, 255, 0) 100%
+            );
+            transform: rotate(30deg);
+            animation: shine 3s infinite;
+        }
+        
+        @keyframes shine {
+            0% { left: -60%; }
+            20% { left: 100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Tarjeta especial para operarios */
+        .operarios-card {
+            max-width: 200px;
+            margin: 0 auto;
+            border: 2px dashed var(--warning-color);
+            background-color: rgba(255, 193, 7, 0.05);
+        }
+        
+        .operarios-card:hover {
+            border-color: var(--warning-hover);
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        .operarios-card.active {
+            border-style: solid;
+            background-color: rgba(255, 193, 7, 0.1);
+        }
+        
+        /* Tooltip para información */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+            font-weight: normal;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">VALIDADOR_CONSUMO</div>
+            <h1>Procesador de Histórico de Consumo Eléctrico</h1>
+            <p class="subtitle">Compare y analice el consumo eléctrico actual con datos históricos</p>
+        </div>
+        
+        <p class="description">
+            Suba los archivos de lectura en orden cronológico (del más reciente al más antiguo) 
+            para generar reportes comparativos y análisis de tendencias de consumo.
+        </p>
+        
+        <h2><i class="fas fa-file-excel"></i> Archivos de Lectura Mensual</h2>
+        <div class="upload-grid">
+            <div class="upload-card" id="actualCard">
+                <h3>LECTURA ACTUAL <span class="tooltip">ℹ️<span class="tooltiptext">Sube el archivo con los datos del mes en curso</span></span></h3>
+                <input type="file" id="actualFileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('actualFileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="actualFileInfo">No se ha seleccionado archivo</div>
+            </div>
+            
+            <div class="upload-card" id="anterior1Card">
+                <h3>ANTERIOR 1 <span class="tooltip">ℹ️<span class="tooltiptext">Datos del mes anterior al actual</span></span></h3>
+                <input type="file" id="anterior1FileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('anterior1FileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="anterior1FileInfo">No se ha seleccionado archivo</div>
+            </div>
+            
+            <div class="upload-card" id="anterior2Card">
+                <h3>ANTERIOR 2</h3>
+                <input type="file" id="anterior2FileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('anterior2FileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="anterior2FileInfo">No se ha seleccionado archivo</div>
+            </div>
+            
+            <div class="upload-card" id="anterior3Card">
+                <h3>ANTERIOR 3</h3>
+                <input type="file" id="anterior3FileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('anterior3FileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="anterior3FileInfo">No se ha seleccionado archivo</div>
+            </div>
+            
+            <div class="upload-card" id="anterior4Card">
+                <h3>ANTERIOR 4</h3>
+                <input type="file" id="anterior4FileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('anterior4FileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="anterior4FileInfo">No se ha seleccionado archivo</div>
+            </div>
+            
+            <div class="upload-card" id="anterior5Card">
+                <h3>ANTERIOR 5</h3>
+                <input type="file" id="anterior5FileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('anterior5FileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="anterior5FileInfo">No se ha seleccionado archivo</div>
+            </div>
+            
+            <div class="upload-card" id="anterior6Card">
+                <h3>ANTERIOR 6</h3>
+                <input type="file" id="anterior6FileInput" class="file-input" accept=".xlsx, .xls" />
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('anterior6FileInput').click()">
+                    <i class="fas fa-upload"></i> Seleccionar
+                </button>
+                <div class="file-info" id="anterior6FileInfo">No se ha seleccionado archivo</div>
+            </div>
+        </div>
+        
+        <h2><i class="fas fa-users"></i> Datos de Operarios</h2>
+        <div class="upload-card operarios-card" id="operariosCard">
+            <h3>REGISTRO DE OPERARIOS <span class="tooltip">ℹ️<span class="tooltiptext">Archivo con cédula y nombre de los operarios</span></span></h3>
+            <input type="file" id="operariosFileInput" class="file-input" accept=".xlsx, .xls" />
+            <button class="btn btn-warning btn-small" onclick="document.getElementById('operariosFileInput').click()">
+                <i class="fas fa-upload"></i> Seleccionar
+            </button>
+            <div class="file-info" id="operariosFileInfo">No se ha seleccionado archivo</div>
+        </div>
+        
+        <div class="actions">
+            <button id="processBtn" class="btn btn-electric" disabled>
+                <i class="fas fa-bolt"></i> Procesar Archivos
+            </button>
+            <button id="addOperariosBtn" class="btn btn-info" disabled>
+                <i class="fas fa-user-plus"></i> Agregar Operarios
+            </button>
+            <button id="generateHistoryBtn" class="btn btn-success" disabled>
+                <i class="fas fa-chart-line"></i> Generar Histórico
+            </button>
+            <button id="clearBtn" class="btn btn-danger">
+                <i class="fas fa-trash-alt"></i> Limpiar Todo
+            </button>
+        </div>
+        
+        <div id="progressBar">
+            <div id="progressBarFill">0%</div>
+        </div>
+        
+        <div id="results">
+            <h3><i class="fas fa-clipboard-check"></i> Resultados del Procesamiento</h3>
+            <p id="resultText"></p>
+            <div style="text-align: center; margin-top: 15px;">
+                <button id="downloadBtn" class="btn" style="display: none;">
+                    <i class="fas fa-file-download"></i> Descargar Datos Unificados
+                </button>
+                <button id="downloadHistoryBtn" class="btn btn-success" style="display: none;">
+                    <i class="fas fa-history"></i> Descargar Histórico
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        const files = {
+            actual: null,
+            anterior1: null,
+            anterior2: null,
+            anterior3: null,
+            anterior4: null,
+            anterior5: null,
+            anterior6: null,
+            operarios: null
+        };
+        
+        let processedData = {};
+        let operariosMap = new Map();
+        let historicalData = [];
+        
+        // Configurar eventos para los inputs de archivo
+        function setupFileInput(inputId, cardId, infoId, fileKey) {
+            const input = document.getElementById(inputId);
+            const card = document.getElementById(cardId);
+            
+            input.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    files[fileKey] = e.target.files[0];
+                    displayFileInfo(infoId, files[fileKey]);
+                    card.classList.add('active');
+                    checkProcessButton();
+                }
+            });
+            
+            // Configurar drag and drop
+            card.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                card.style.borderColor = fileKey === 'operarios' ? 'var(--warning-color)' : 'var(--electric-blue)';
+                card.style.backgroundColor = fileKey === 'operarios' ? 'rgba(255, 193, 7, 0.1)' : 'rgba(0, 119, 182, 0.1)';
+            });
+            
+            card.addEventListener('dragleave', () => {
+                card.style.borderColor = '';
+                card.style.backgroundColor = '';
+            });
+            
+            card.addEventListener('drop', (e) => {
+                e.preventDefault();
+                card.style.borderColor = '';
+                card.style.backgroundColor = '';
+                
+                const droppedFiles = Array.from(e.dataTransfer.files).filter(file => 
+                    file.name.match(/\.(xlsx|xls)$/i)
+                );
+                
+                if (droppedFiles.length === 1) {
+                    input.files = e.dataTransfer.files;
+                    input.dispatchEvent(new Event('change'));
+                } else {
+                    alert('Por favor, sube solo un archivo Excel (.xlsx o .xls)');
+                }
+            });
+        }
+        
+        // Inicializar todos los inputs
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFileInput('actualFileInput', 'actualCard', 'actualFileInfo', 'actual');
+            setupFileInput('anterior1FileInput', 'anterior1Card', 'anterior1FileInfo', 'anterior1');
+            setupFileInput('anterior2FileInput', 'anterior2Card', 'anterior2FileInfo', 'anterior2');
+            setupFileInput('anterior3FileInput', 'anterior3Card', 'anterior3FileInfo', 'anterior3');
+            setupFileInput('anterior4FileInput', 'anterior4Card', 'anterior4FileInfo', 'anterior4');
+            setupFileInput('anterior5FileInput', 'anterior5Card', 'anterior5FileInfo', 'anterior5');
+            setupFileInput('anterior6FileInput', 'anterior6Card', 'anterior6FileInfo', 'anterior6');
+            setupFileInput('operariosFileInput', 'operariosCard', 'operariosFileInfo', 'operarios');
+            
+            // Configurar otros event listeners
+            document.getElementById('clearBtn').addEventListener('click', clearAll);
+            document.getElementById('processBtn').addEventListener('click', processFiles);
+            document.getElementById('addOperariosBtn').addEventListener('click', addOperarios);
+            
+            document.getElementById('generateHistoryBtn').addEventListener('click', () => {
+            generateHistory();
+            setTimeout(() => downloadHistory(), 5000);
+            });
+
+
+        });
+        
+        // Mostrar información del archivo seleccionado
+        function displayFileInfo(elementId, file) {
+            const element = document.getElementById(elementId);
+            element.textContent = `${file.name} (${formatFileSize(file.size)})`;
+            element.title = file.name;
+        }
+        
+        // Limpiar todos los archivos
+        function clearAll() {
+            for (const key in files) {
+                files[key] = null;
+                document.getElementById(`${key}FileInput`).value = '';
+                document.getElementById(`${key}FileInfo`).textContent = 'No se ha seleccionado archivo';
+                document.getElementById(`${key}Card`).classList.remove('active');
+            }
+            checkProcessButton();
+            document.getElementById('addOperariosBtn').disabled = true;
+            document.getElementById('generateHistoryBtn').disabled = true;
+            document.getElementById('downloadBtn').style.display = 'none';
+            document.getElementById('downloadHistoryBtn').style.display = 'none';
+            
+            // Limpiar resultados
+            document.getElementById('resultText').textContent = '';
+            document.getElementById('progressBar').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        // Habilitar/deshabilitar botón de procesar
+        function checkProcessButton() {
+            const processBtn = document.getElementById('processBtn');
+            // Requerir al menos el archivo ACTUAL
+            if (files.actual) {
+                processBtn.disabled = false;
+                processBtn.classList.remove('btn-disabled');
+            } else {
+                processBtn.disabled = true;
+                processBtn.classList.add('btn-disabled');
+            }
+        }
+        
+        // Formatear tamaño del archivo
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Procesar archivo de operarios
+        async function processOperariosFile(file) {
+            operariosMap = new Map(); // Resetear el mapa
+            
+            try {
+                const arrayBuffer = await readFileAsArrayBuffer(file);
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                
+                // Procesar la primera hoja del archivo de operarios
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                // Crear mapa de cédula (A) -> nombre (B)
+                for (let i = 0; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (row[0] && row[1]) { // Columna A (cédula) y B (nombre)
+                        operariosMap.set(row[0].toString().trim(), row[1]);
+                    }
+                }
+                
+                return operariosMap.size;
+            } catch (error) {
+                console.error('Error al procesar archivo de operarios:', error);
+                return 0;
+            }
+        }
+        
+        // Procesar archivos
+        async function processFiles() {
+            const progressBar = document.getElementById('progressBar');
+            const progressBarFill = document.getElementById('progressBarFill');
+            const resultText = document.getElementById('resultText');
+            const resultsDiv = document.getElementById('results');
+            const addOperariosBtn = document.getElementById('addOperariosBtn');
+            const generateHistoryBtn = document.getElementById('generateHistoryBtn');
+            
+            progressBar.style.display = 'block';
+            resultsDiv.style.display = 'block';
+            resultText.textContent = 'Iniciando procesamiento de archivos...';
+            
+            // Inicializar objeto para datos procesados
+            processedData = {};
+            historicalData = [];
+            
+            try {
+                // Contador para la barra de progreso
+                let totalFiles = 0;
+                let processedFiles = 0;
+                
+                // Contar archivos seleccionados (excluyendo operarios)
+                for (const key in files) {
+                    if (files[key] && key !== 'operarios') totalFiles++;
+                }
+                
+                // Procesar archivo de operarios primero si existe
+                if (files.operarios) {
+                    resultText.textContent += '\n\nProcesando archivo de operarios...';
+                    const operariosCount = await processOperariosFile(files.operarios);
+                    if (operariosCount > 0) {
+                        resultText.textContent += `\n✅ Se cargaron ${operariosCount} operarios correctamente.`;
+                        addOperariosBtn.disabled = false;
+                        addOperariosBtn.classList.remove('btn-disabled');
+                    } else {
+                        resultText.textContent += '\n⚠️ No se pudieron cargar operarios. Verifique el formato del archivo.';
+                        addOperariosBtn.disabled = true;
+                        addOperariosBtn.classList.add('btn-disabled');
+                    }
+                } else {
+                    resultText.textContent += '\n\n⚠️ No se cargó archivo de operarios. Esta función estará deshabilitada.';
+                    addOperariosBtn.disabled = true;
+                    addOperariosBtn.classList.add('btn-disabled');
+                }
+                
+                // Procesar archivo ACTUAL
+                if (files.actual) {
+                    resultText.textContent += '\n\n🔵 Procesando archivo ACTUAL...';
+                    const arrayBuffer = await readFileAsArrayBuffer(files.actual);
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    
+                    // Procesar hoja ACTUAL
+                    let combinedData = processWorkbook(workbook, files.actual.name);
+                    processedData["ACTUAL"] = combinedData;
+                    
+                    // Actualizar barra de progreso
+                    processedFiles++;
+                    updateProgress(processedFiles, totalFiles);
+                    resultText.textContent += `\n✅ Archivo ACTUAL procesado correctamente (${combinedData.length - 1} registros).`;
+                }
+                
+                // Procesar archivos ANTERIORES
+                for (let i = 1; i <= 6; i++) {
+                    const file = files[`anterior${i}`];
+                    if (file) {
+                        resultText.textContent += `\n\n🟢 Procesando archivo ANTERIOR ${i}...`;
+                        const arrayBuffer = await readFileAsArrayBuffer(file);
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                        
+                        // Procesar hoja ANTERIOR
+                        let combinedData = processWorkbook(workbook, file.name);
+                        processedData[`ANTERIOR${i}`] = combinedData;
+                        
+                        // Actualizar barra de progreso
+                        processedFiles++;
+                        updateProgress(processedFiles, totalFiles);
+                        resultText.textContent += `\n✅ Archivo ANTERIOR ${i} procesado correctamente (${combinedData.length - 1} registros).`;
+                    }
+                }
+                
+                resultText.textContent += `\n\n🎉 Procesamiento completado. Se han procesado ${processedFiles} archivos de lectura.`;
+                
+                // Habilitar botón de generar histórico si hay al menos ACTUAL y ANTERIOR1
+                if (processedData["ACTUAL"] && processedData["ANTERIOR1"]) {
+                    generateHistoryBtn.disabled = false;
+                    generateHistoryBtn.classList.remove('btn-disabled');
+                    resultText.textContent += '\n\nℹ️ Ahora puedes generar el reporte histórico comparando los datos actuales con los anteriores.';
+                } else {
+                    generateHistoryBtn.disabled = true;
+                    generateHistoryBtn.classList.add('btn-disabled');
+                    resultText.textContent += '\n\n⚠️ Para generar el histórico necesitas al menos el archivo ACTUAL y ANTERIOR 1.';
+                }
+                
+            } catch (error) {
+                console.error('Error al procesar archivos:', error);
+                resultText.textContent += `\n\n❌ Error al procesar archivos: ${error.message}`;
+            }
+        }
+        
+        // Función para agregar operarios a los datos procesados
+        async function addOperarios() {
+            const resultText = document.getElementById('resultText');
+            const downloadBtn = document.getElementById('downloadBtn');
+            
+            if (Object.keys(processedData).length === 0) {
+                resultText.textContent += '\n\n❌ No hay datos procesados para agregar operarios.';
+                return;
+            }
+            
+            if (operariosMap.size === 0) {
+                resultText.textContent += '\n\n❌ No hay operarios cargados para agregar.';
+                return;
+            }
+            
+            resultText.textContent += '\n\n🔄 Agregando operarios a los registros...';
+            
+            try {
+                let totalMatches = 0;
+                
+                // Procesar cada hoja
+                Object.keys(processedData).forEach(sheetName => {
+                    const sheetData = processedData[sheetName];
+                    if (sheetData.length === 0) return;
+                    
+                    // Agregar encabezado para la nueva columna
+                    sheetData[0].push("NOMBRE_OPERARIO");
+                    
+                    // Índice de la columna D (cédula) en los datos procesados
+                    const cedulaIndex = 3;
+                    
+                    // Procesar cada fila (empezando desde la 1 porque la 0 son encabezados)
+                    for (let i = 1; i < sheetData.length; i++) {
+                        const row = sheetData[i];
+                        const cedula = row[cedulaIndex] ? row[cedulaIndex].toString().trim() : '';
+                        
+                        // Buscar en el mapa de operarios
+                        const nombreOperario = operariosMap.get(cedula) || '';
+                        row.push(nombreOperario);
+                        
+                        if (nombreOperario) {
+                            totalMatches++;
+                        }
+                    }
+                });
+                
+                resultText.textContent += `\n✅ Operarios agregados correctamente. Se encontraron ${totalMatches} coincidencias.`;
+                downloadBtn.style.display = 'block';
+                resultText.textContent += '\n\n⬇️ Ahora puedes descargar los datos unificados con la información de operarios.';
+                
+            } catch (error) {
+                console.error('Error al agregar operarios:', error);
+                resultText.textContent += `\n\n❌ Error al agregar operarios: ${error.message}`;
+            }
+        }
+        
+        // Función para generar datos históricos
+        async function generateHistory() {
+            const resultText = document.getElementById('resultText');
+            const downloadHistoryBtn = document.getElementById('downloadHistoryBtn');
+            
+            if (!processedData["ACTUAL"]) {
+                resultText.textContent += '\n\n❌ No hay datos del archivo ACTUAL para generar histórico.';
+                return;
+            }
+            
+            resultText.textContent += '\n\n📊 Generando reporte histórico comparativo...';
+            
+            try {
+                // Crear estructura para datos históricos
+                historicalData = [];
+                
+                // Obtener encabezados originales del ACTUAL
+                const actualHeaders = processedData["ACTUAL"][0];
+                
+                // Índices de las columnas en processedData
+                const kIndex = 10;  // Columna K
+                const lIndex = 11;  // Columna L
+                const mIndex = 12;  // Columna M
+                const nIndex = 13;  // Columna N
+                const oIndex = 14;  // Columna O
+                const pIndex = 15;  // Columna P
+                const qIndex = 16;  // Columna Q
+                const rIndex = 17;  // Columna R
+                
+                // Encabezados para el histórico
+                const headers = ["CLIENTESTIPO"];
+                
+                // Agregar columnas J de cada archivo (en orden cronológico inverso)
+                if (processedData["ANTERIOR6"]) headers.push("J_ANTERIOR6");
+                if (processedData["ANTERIOR5"]) headers.push("J_ANTERIOR5");
+                if (processedData["ANTERIOR4"]) headers.push("J_ANTERIOR4");
+                if (processedData["ANTERIOR3"]) headers.push("J_ANTERIOR3");
+                if (processedData["ANTERIOR2"]) headers.push("J_ANTERIOR2");
+                if (processedData["ANTERIOR1"]) headers.push("J_ANTERIOR1");
+                if (processedData["ACTUAL"]) headers.push("J_ACTUAL");
+                
+                // Agregar columnas K, L, M, N, O, P, Q, R con nombres originales
+                headers.push(
+                    actualHeaders[kIndex] || "K_ACTUAL",
+                    actualHeaders[lIndex] || "L_ACTUAL",
+                    actualHeaders[mIndex] || "M_ACTUAL",
+                    actualHeaders[nIndex] || "N_ACTUAL",
+                    actualHeaders[oIndex] || "O_ACTUAL",
+                    actualHeaders[pIndex] || "P_ACTUAL",
+                    actualHeaders[qIndex] || "Q_ACTUAL",
+                    actualHeaders[rIndex] || "R_ACTUAL"
+                );
+                while (headers.length <= 16) {
+                headers.push("ESTADO_OSB");
+                }
+                
+                historicalData.push(headers);
+                
+                // Procesar cada fila del ACTUAL
+                const actualData = processedData["ACTUAL"];
+                for (let i = 1; i < actualData.length; i++) {
+                    const row = actualData[i];
+                    const concatenacion = row[0]; // Columna A (Concatenación)
+                    
+                    const newRow = [concatenacion];
+                    
+                    // Agregar columna J de cada archivo (en el mismo orden que los headers)
+                    if (processedData["ANTERIOR6"]) newRow.push(findJValue(concatenacion, processedData["ANTERIOR6"]));
+                    if (processedData["ANTERIOR5"]) newRow.push(findJValue(concatenacion, processedData["ANTERIOR5"]));
+                    if (processedData["ANTERIOR4"]) newRow.push(findJValue(concatenacion, processedData["ANTERIOR4"]));
+                    if (processedData["ANTERIOR3"]) newRow.push(findJValue(concatenacion, processedData["ANTERIOR3"]));
+                    if (processedData["ANTERIOR2"]) newRow.push(findJValue(concatenacion, processedData["ANTERIOR2"]));
+                    if (processedData["ANTERIOR1"]) newRow.push(findJValue(concatenacion, processedData["ANTERIOR1"]));
+                    if (processedData["ACTUAL"]) newRow.push(findJValue(concatenacion, processedData["ACTUAL"]));
+                    
+                    // Agregar columnas K, L, M, N, O, P, Q, R de ACTUAL
+                    newRow.push(
+                        row[kIndex], // K
+                        row[lIndex], // L
+                        row[mIndex], // M
+                        row[nIndex], // N
+                        row[oIndex], // O
+                        row[pIndex], // P
+                        row[qIndex], // Q
+                        row[rIndex]  // R
+                    );
+                    
+                    historicalData.push(newRow);
+                }
+                
+                resultText.textContent += `\n✅ Reporte histórico generado correctamente con ${historicalData.length - 1} registros comparativos.`;
+                downloadHistoryBtn.style.display = 'block';
+                resultText.textContent += '\n\n⬇️ Ahora puedes descargar el reporte histórico para su análisis.';
+                
+            } catch (error) {
+                console.error('Error al generar histórico:', error);
+                resultText.textContent += `\n\n❌ Error al generar histórico: ${error.message}`;
+            }
+        }
+        
+        // Función auxiliar para encontrar valor J por concatenación
+        function findJValue(concatenacion, sheetData) {
+            for (let i = 1; i < sheetData.length; i++) {
+                if (sheetData[i][0] === concatenacion) {
+                    return sheetData[i][9]; // Índice 9 es columna J en los datos procesados
+                }
+            }
+            return ''; // Si no se encuentra, devolver vacío
+        }
+        
+        // Función para procesar un workbook
+        function processWorkbook(workbook, fileName) {
+            let combinedData = [];
+            let headersSet = false;
+            
+            workbook.SheetNames.forEach(originalSheetName => {
+                const worksheet = workbook.Sheets[originalSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                if (jsonData.length < 6) {
+                    console.warn(`El archivo ${fileName} (hoja ${originalSheetName}) no tiene suficientes filas. Se omite.`);
+                    return;
+                }
+                
+                // Obtener encabezados de la fila 6 (índice 5)
+                const headers = jsonData[5];
+                
+                // Filtrar solo las columnas requeridas: C,D,E,H,G,J,F,L,M,O,P,Q,W,X
+                const requiredCols = [2, 3, 4, 6, 7, 8, 5, 11, 12, 14, 15, 16, 22, 23];
+                
+                // Crear encabezados con columna A adicional para la concatenación
+                const filteredHeaders = ['USUARIOTIPO'].concat(
+                    requiredCols.map(colIndex => headers[colIndex])
+                ).concat([
+                    'SECCION',  // Nueva columna para últimos 3 caracteres de A
+                    headers[13] || 'N'  // Columna N del archivo original
+                ]);
+                
+                // Si es la primera vez, establecer los encabezados
+                if (!headersSet) {
+                    combinedData.push(filteredHeaders);
+                    headersSet = true;
+                }
+                
+                // Procesar filas a partir de la 7 (índice 6)
+                for (let j = 6; j < jsonData.length; j++) {
+                    const row = jsonData[j];
+                    const filteredRow = [];
+                    
+                    // Concatenar C (índice 2) y L (índice 11) para la columna A
+                    const valueC = row[2] || '';
+                    const valueL = row[11] || '';
+                    const concatenated = `${valueC}${valueL}`;
+                    filteredRow.push(concatenated); // Sin espacio
+                    
+                    // Agregar el resto de columnas (a partir de B)
+                    requiredCols.forEach(colIndex => {
+                        let value = row[colIndex] !== undefined ? row[colIndex] : '';
+                        filteredRow.push(value);
+                    });
+                    
+                    // Agregar nuevas columnas al final
+                    // Últimos 3 caracteres de la columna A (índice 0)
+                    const valueA = row[0] !== undefined ? row[0].toString() : '';
+                    filteredRow.push(valueA.slice(-3)); // Últimos 3 caracteres
+                    
+                    // Columna N (índice 13)
+                    filteredRow.push(row[13] !== undefined ? row[13] : '');
+                    
+                    if (filteredRow.some(val => val !== '' && val !== undefined)) {
+                        combinedData.push(filteredRow);
+                    }
+                }
+            });
+            
+            return combinedData;
+        }
+        
+        // Actualizar barra de progreso
+        function updateProgress(processed, total) {
+            const progress = Math.round((processed / total) * 100);
+            document.getElementById('progressBarFill').style.width = `${progress}%`;
+            document.getElementById('progressBarFill').textContent = `${progress}%`;
+        }
+        
+        // Leer archivo como ArrayBuffer
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(new Error('Error al leer el archivo'));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        // Mapa de códigos de observación a descripciones
+        const observacionMap = {
+            1: "No existe geográficamente",
+            2: "Imposibilidad de acceso",
+            3: "Alto o profundo",
+            4: "Tapado interiormente",
+            5: "Destruido - casa habitada",
+            6: "Volteado",
+            7: "Medidor digital",
+            8: "Demolida",
+            9: "Directa",
+            10: "Sin identificación",
+            11: "Cortada sin medidor",
+            12: "Medidor digital sin consumo",
+            13: "Imposibilidad de acceso sin consumo",
+            14: "Afectacion por Fenomeno Natural",
+            15: "Destruido - casa deshabitada",
+            16: "Falla en Autenticación de medidor",
+            21: "Fraude",
+            22: "Cambio de actividad",
+            23: "Vacía",
+            24: "Variación número de personas",
+            25: "Parado o dañado",
+            26: "Surte otras instalaciones",
+            27: "Se surte de otra instalación",
+            28: "Sin servicio con medidor",
+            29: "Registro devolviendo",
+            30: "Variación nivel de utilización",
+            31: "Cambiado",
+            33: "Daño interno",
+            34: "Lectura menor",
+            35: "No hay justificación",
+            36: "Trocamiento",
+            37: "Habitada en reforma",
+            38: "Vacía  en reforma o demolición",
+            39: "Ver alfanuméricas",
+            42: "Energía sustituta",
+            84: "Fuga en la acometida",
+            85: "Visor perforado o violentado",
+            86: "Volteado",
+            87: "Observación especifica",
+            88: "Sin caja o caja deteriorada",
+            89: "Sellos - Novedad",
+            90: "Registro descentrado",
+            91: "Marcar medidor",
+            92: "Fraude de energía",
+            93: "Falta iluminación",
+            94: "Establecimiento para revisar",
+            95: "Crear advertencia",
+            96: "Cambio de uso o de actividad",
+            97: "Caído o suelto",
+            98: "Alto o profundo",
+            99: "Acometida pelada de energía"
+        };
+
+        // Descargar archivo unificado
+        async function downloadUnified() {
+            try {
+                // Crear un nuevo libro de trabajo
+                const wb = XLSX.utils.book_new();
+                
+                // Agregar cada hoja al libro de trabajo
+                Object.keys(processedData).forEach(sheetName => {
+                    if (processedData[sheetName].length > 0) {
+                        const ws = XLSX.utils.aoa_to_sheet(processedData[sheetName]);
+                        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                    }
+                });
+                
+                // Generar el archivo Excel
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                
+                // Descargar el archivo
+                saveAs(new Blob([wbout], { type: 'application/octet-stream' }), 'datos_unificados_energia.xlsx');
+                
+                document.getElementById('resultText').textContent += '\n\n⬇️ Archivo descargado: datos_unificados_energia.xlsx';
+            } catch (error) {
+                console.error('Error al generar el archivo:', error);
+                document.getElementById('resultText').textContent += `\n\n❌ Error al generar el archivo: ${error.message}`;
+            }
+        }
+        
+        // Descargar archivo histórico
+        async function downloadHistory() {
+            try {
+                if (historicalData.length === 0) {
+                    document.getElementById('resultText').textContent += '\n\n❌ No hay datos históricos para descargar.';
+                    return;
+                }
+                
+                // Aplicar reemplazo en la columna I (índice 8) con descripciones
+                for (let i = 1; i < historicalData.length; i++) {
+                    const code = parseInt(historicalData[i][8]);
+                    if (!isNaN(code) && observacionMap[code]) {
+                        historicalData[i][8] = observacionMap[code];
+                    }
+                }
+                
+                // --- AQUÍ VA EL CÓDIGO PARA RENOMBRAR LA COLUMNA Q ---
+                if (historicalData.length > 0 && historicalData[0].length > 17) {
+                    historicalData[0][17] = "ESTADO"; // Cambia el encabezado de la columna Q
+                }
+                // -----------------------------------------------------
+
+                // Reglas de validación específicas para ciertos textos en columna I
+                const validaciones = {
+                    "No existe geográficamente": ["K1","K2", "K3", "K4"],
+                    "Imposibilidad de acceso": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "RB"],
+                    "Tapado interiormente": ["F1", "F2"],
+                    "Destruido - casa habitada": ["P1", "P2", "PD"],
+                    "Volteado": ["F3", "A1"],
+                    "Medidor digital": ["P3", "F4"],
+                    "Demolida": ["K5", "K6", "K7"],
+                    "Cortada sin medidor": ["P4", "P5"],
+                    "Imposibilidad de acceso sin consumo": ["RA"],
+                    "Destruido - casa deshabitada": ["PA", "PB", "PC"],
+                    "Fraude": ["P6", "P7", "P8", "P9"],
+                    "Cambio de actividad": ["F5", "F6"],
+                    "Vacía": ["F7"],
+                    "Variación número de personas": ["F8"],
+                    "Variación nivel de utilización": ["G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8", "G9", "GA"],
+                    "Daño interno": ["A2", "A3", "A4"],
+                    "Lectura menor": ["A5", "A6"],
+                    "No hay justificación": ["H1", "H2", "H3", "H4", "H5", "H6", "H7", "H8", "H9"],
+                    "Energía sustituta": ["A7", "A8"]
+                };
+
+                // Nuevas reglas donde J debe estar vacío y K debe tener contenido
+                const validacionesJvacioKlleno = [
+                    "Directa",
+                    "Sin identificación",
+                    "Falla en autenticación de medidor",
+                    "Parado o dañado",
+                    "Surte otras instalaciones",
+                    "Se surte de otra instalación",
+                    "Registro devolviendo",
+                    "Cambiado",
+                    "Trocamiento",
+                    "Ver alfanuméricas"
+                ];
+
+                // Validar por fila
+                for (let i = 1; i < historicalData.length; i++) {
+                    const iVal = historicalData[i][8];  // columna I
+                    const jVal = historicalData[i][9];  // columna J
+                    const kVal = historicalData[i][10]; // columna K
+                    let estado = 'opcional';
+
+                    // Primero verifica las nuevas reglas (J vacío y K con contenido)
+                    if (validacionesJvacioKlleno.includes(iVal)) {
+                        if ((jVal === '' || jVal === null || jVal === undefined) && 
+                            kVal && kVal.toString().trim() !== '') {
+                            estado = 'ok';
+                        } else {
+                            estado = 'error';
+                        }
+                    }
+                    // Luego verifica las reglas originales (solo si no aplicaron las nuevas)
+                    else if (validaciones[iVal]) {
+                        if (validaciones[iVal].includes(jVal) && kVal && kVal.toString().trim() !== '') {
+                            estado = 'ok';
+                        } else {
+                            estado = 'error';
+                        }
+                    }
+
+                    // Asegurar que haya al menos 17 columnas para colocar resultado en la columna Q (índice 16)
+                    while (historicalData[i].length < 17) {
+                        historicalData[i].push('');
+                    }
+
+                    historicalData[i][16] = estado;
+                }
+
+                // Crear un nuevo libro de trabajo
+                const wb = XLSX.utils.book_new();
+                
+                // Crear hoja con datos históricos
+                const ws = XLSX.utils.aoa_to_sheet(historicalData);
+                XLSX.utils.book_append_sheet(wb, ws, "HISTORICO_ENERGIA");
+                
+                // Generar el archivo Excel
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                
+                // Descargar el archivo
+                saveAs(new Blob([wbout], { type: 'application/octet-stream' }), 'historico_consumo_electrico.xlsx');
+                
+                document.getElementById('resultText').textContent += '\n\n⬇️ Archivo descargado: historico_consumo_electrico.xlsx';
+            } catch (error) {
+                console.error('Error al generar archivo histórico:', error);
+                document.getElementById('resultText').textContent += `\n\n❌ Error al generar archivo histórico: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

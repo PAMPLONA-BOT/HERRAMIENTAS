@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>GPS Decoder 🌐</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0f172a;
+      color: #e2e8f0;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    h2 {
+      color: #38bdf8;
+      margin-bottom: 10px;
+    }
+    p {
+      font-size: 16px;
+      color: #94a3b8;
+    }
+    input {
+      padding: 12px;
+      width: 80%;
+      max-width: 500px;
+      font-size: 18px;
+      border-radius: 12px;
+      border: none;
+      background: #1e293b;
+      color: #f1f5f9;
+      margin-top: 15px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 12px 24px;
+      font-size: 16px;
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover {
+      background: #0ea5e9;
+    }
+    #resultado {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #facc15;
+    }
+    #mapa {
+      margin-top: 25px;
+      width: 100%;
+      height: 60vh;
+      border: none;
+      border-radius: 14px;
+      display: none;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+      transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <h2>📍 GPS Decoder con Símbolos</h2>
+  <p>Pega el código secreto: <code>▄◦▒▓▐▌◘◄...</code></p>
+
+  <input type="text" id="codigo" placeholder="Ingresa tu código en símbolos..." />
+  <br />
+  <button onclick="decodificar()">Mostrar en mapa</button>
+
+  <div id="resultado"></div>
+  <iframe id="mapa"></iframe>
+
+  <script>
+    const graficoInv = {
+      "░": "0", "▒": "1", "▓": "2", "█": "3", "▌": "4",
+      "▐": "5", "▀": "6", "▄": "7", "■": "8", "□": "9",
+      "◦": ".", "◘": ",", "◄": "-"
+    };
+
+    function decodificar() {
+      const input = document.getElementById('codigo').value.trim();
+      let resultado = '';
+      for (const simbolo of input) {
+        resultado += graficoInv[simbolo] || '';
+      }
+
+      const partes = resultado.split(",");
+      if (partes.length === 2 && !isNaN(partes[0]) && !isNaN(partes[1])) {
+        const lat = partes[0];
+        const lon = partes[1];
+        document.getElementById('resultado').innerHTML = `📍 Coordenada: <strong>${lat}, ${lon}</strong>`;
+        const mapa = document.getElementById("mapa");
+        mapa.src = `https://www.google.com/maps?q=${lat},${lon}&output=embed`;
+        mapa.style.display = "block";
+      } else {
+        document.getElementById('resultado').innerText = "⚠️ Código inválido. Verifica los símbolos.";
+        document.getElementById("mapa").style.display = "none";
+      }
+    }
+  </script>
+</body>
+</html>

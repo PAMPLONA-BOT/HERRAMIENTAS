@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Unificar Revisiones y Generar JSON</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2, h3 {
+      color: #38bdf8;
+    }
+    .botones, .botones-json {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    button {
+      background: linear-gradient(to right, #06b6d4, #3b82f6);
+      border: none;
+      color: white;
+      padding: 0.8rem 1.6rem;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(to right, #0ea5e9, #60a5fa);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #preview, #preview-json {
+      width: 100%;
+      max-width: 800px;
+      background-color: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      box-shadow: 0 0 15px #0ea5e955;
+      margin-top: 1rem;
+    }
+    #preview pre, #preview-json pre {
+      background-color: #0f172a;
+      padding: 0.5rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-left: 4px solid #38bdf8;
+    }
+    .fade {
+      transition: opacity 0.5s ease;
+      opacity: 0;
+    }
+    .show {
+      opacity: 1;
+    }
+    input[type="file"] {
+      padding: 0.6rem;
+      background-color: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      cursor: pointer;
+    }
+    .radio-group {
+      margin: 10px 0;
+    }
+    .radio-group label {
+      margin-right: 20px;
+    }
+    .tamanio {
+      font-style: italic;
+      margin-top: 10px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+<div id="unificador" class="show">
+  <h2>EJECUTOR Y ANALISTA DE R_REVISIONES</h2>
+  <input type="file" id="fileInput" />
+  <div class="botones">
+    <button onclick="procesarExcel()">Procesar</button>
+    <button id="btnDescargar" onclick="descargarExcel()" disabled>Descargar Excel</button>
+    <button id="btnGenerarJson" onclick="irAGenerador()" disabled>Generar JSON</button>
+    <button onclick="limpiarTodo()">Limpiar</button>
+  </div>
+  <h3>Primeros resultados (máximo 6):</h3>
+  <div id="preview"></div>
+</div>
+
+<div id="generadorJson" class="fade" style="display:none;">
+  <h2>Convertidor de Excel a JSON</h2>
+  <div class="radio-group">
+    <label><input type="radio" name="formato" value="vertical" checked> Vertical (multilínea)</label>
+    <label><input type="radio" name="formato" value="horizontal"> Horizontal (una sola línea)</label>
+  </div>
+  <div class="tamanio" id="tamanioArchivo">Tamaño estimado: --</div>
+  <div class="botones-json">
+    <button onclick="descargar('json')">📥 Descargar JSON</button>
+    <button onclick="descargar('txt')">📥 Descargar TXT</button>
+    <button onclick="volverAlUnificador()">🔙 Volver al Unificador</button>
+  </div>
+  <div class="preview" id="preview-json">Vista previa...</div>
+</div>
+
+<script>
+let resultadoFinal = null;
+let jsonData = [];
+let nombreArchivoFinal = "";
+
+function procesarExcel() {
+  const fileInput = document.getElementById('fileInput');
+  const file = fileInput.files[0];
+  if (!file) return alert('Seleccione un archivo Excel primero.');
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonDataOriginal = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+    const headers = jsonDataOriginal[0];
+    const rows = jsonDataOriginal.slice(1);
+    const mapa = {};
+
+    rows.forEach(row => {
+      const cliente = row[1];
+      if (!cliente) return;
+      let contenido = '';
+      const columnasDeseadas = [2, 4, 5, 6, 7, 8, 9, 3, 11, 12];
+
+      for (const i of columnasDeseadas) {
+        if ((i === 7 || i === 8) && row[7] && row[8] && i === 7) {
+          contenido += `FECHA: ${row[7]}  HORA: ${row[8]}\n`;
+          continue;
+        }
+        if (i === 8) continue;
+        if (headers[i] && row[i]) {
+          contenido += `${headers[i]}: ${row[i]}\n`;
+        }
+      }
+
+      if (!mapa[cliente]) mapa[cliente] = [];
+      mapa[cliente].push({ texto: contenido, fecha: row[7] });
+    });
+
+    const resultado = Object.entries(mapa).map(([cliente, entradas]) => {
+      entradas.sort((a, b) => {
+        const fechaA = new Date(a.fecha.replace(/\*/g, '').split('/').reverse().join('-'));
+        const fechaB = new Date(b.fecha.replace(/\*/g, '').split('/').reverse().join('-'));
+        return fechaA - fechaB;
+      });
+
+      const todoTexto = entradas.map(e => e.texto.trim()).join('\n\n');
+      return [cliente, todoTexto];
+    });
+
+    resultadoFinal = resultado;
+    document.getElementById('btnDescargar').disabled = false;
+    document.getElementById('btnGenerarJson').disabled = false;
+
+    const preview = document.getElementById('preview');
+    preview.innerHTML = resultado.slice(0, 6).map(r =>
+      `<p><strong>${r[0]}</strong><br><pre>${r[1]}</pre></p>`).join('');
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+function calcularTamanio(contenido) {
+  const bytes = new Blob([contenido]).size;
+  const kb = bytes / 1024;
+  return `${kb.toFixed(2)} KB`;
+}
+
+function actualizarPreviewYTamano() {
+  const formato = document.querySelector('input[name="formato"]:checked').value;
+  let contenido = formato === 'vertical' ? JSON.stringify(jsonData, null, 2) : JSON.stringify(jsonData);
+  document.getElementById('preview-json').innerHTML = `<pre>${contenido}</pre>`;
+  document.getElementById('tamanioArchivo').textContent = "Tamaño estimado: " + calcularTamanio(contenido);
+}
+
+function descargarExcel() {
+  if (!resultadoFinal) return;
+  const nuevaHoja = [['CLIENTE_ID', 'DATOS UNIFICADOS']];
+  resultadoFinal.forEach(r => nuevaHoja.push(r));
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(nuevaHoja);
+  XLSX.utils.book_append_sheet(wb, ws, 'Unificados');
+  XLSX.writeFile(wb, 'clientes_unificados.xlsx');
+}
+
+function limpiarTodo() {
+  document.getElementById('fileInput').value = '';
+  document.getElementById('preview').innerHTML = '';
+  document.getElementById('btnDescargar').disabled = true;
+  document.getElementById('btnGenerarJson').disabled = true;
+  resultadoFinal = null;
+}
+
+function irAGenerador() {
+  if (!resultadoFinal) return;
+  document.getElementById('unificador').classList.remove('show');
+  document.getElementById('unificador').classList.add('fade');
+  setTimeout(() => {
+    document.getElementById('unificador').style.display = 'none';
+    document.getElementById('generadorJson').style.display = 'block';
+    setTimeout(() => document.getElementById('generadorJson').classList.add('show'), 10);
+
+    jsonData = resultadoFinal.map(r => [r[0], r[1]]);
+
+    const fechaHoy = new Date();
+    const dia = String(fechaHoy.getDate()).padStart(2, '0');
+    const mes = String(fechaHoy.getMonth() + 1).padStart(2, '0');
+    const anio = fechaHoy.getFullYear();
+    nombreArchivoFinal = `Revisiones Ejecutadas ${dia}-${mes}-${anio}`;
+
+    actualizarPreviewYTamano();
+  }, 500);
+
+  document.querySelectorAll('input[name="formato"]').forEach(input => {
+    input.addEventListener('change', actualizarPreviewYTamano);
+  });
+}
+
+function volverAlUnificador() {
+  document.getElementById('generadorJson').classList.remove('show');
+  document.getElementById('generadorJson').classList.add('fade');
+  setTimeout(() => {
+    document.getElementById('generadorJson').style.display = 'none';
+    document.getElementById('unificador').style.display = 'block';
+    setTimeout(() => document.getElementById('unificador').classList.add('show'), 10);
+  }, 500);
+}
+
+function descargar(tipo) {
+  if (!jsonData) return;
+  const formato = document.querySelector('input[name="formato"]:checked').value;
+  let contenido = formato === 'vertical' ? JSON.stringify(jsonData, null, 2) : JSON.stringify(jsonData);
+  const blob = new Blob([contenido], { type: "text/plain" });
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = `${nombreArchivoFinal}.${tipo}`;
+  enlace.click();
+}
+</script>
+
+</body>
+</html>

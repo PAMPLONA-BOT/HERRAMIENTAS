@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIRIUS - Gestión de Correrías y Órdenes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-fondo: #f8fafc;
+      --color-texto: #1e293b;
+      --color-primario: #2563eb;
+      --color-secundario: #4f46e5;
+      --color-exito: #10b981;
+      --color-alerta: #f59e0b;
+      --color-error: #ef4444;
+      --color-borde: #e2e8f0;
+      --color-tarjeta: #ffffff;
+      --sombra-tarjeta: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+      --sombra-elevada: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--color-fondo);
+      color: var(--color-texto);
+      line-height: 1.5;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .contenedor-principal {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
+    }
+    
+    /* Encabezado */
+    .encabezado {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.5rem;
+      background-color: var(--color-tarjeta);
+      box-shadow: var(--sombra-tarjeta);
+      border-bottom: 1px solid var(--color-borde);
+      margin-bottom: 1.5rem;
+    }
+    
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .logo-icono {
+      width: 32px;
+      height: 32px;
+      background-color: var(--color-primario);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .logo-texto h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--color-texto);
+      margin: 0;
+    }
+    
+    .logo-texto p {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin: 0;
+    }
+    
+    /* Pestañas */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--color-borde);
+      margin-bottom: 1.5rem;
+      padding-left: 1.5rem;
+    }
+    
+    .tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      color: #64748b;
+      font-weight: 500;
+      border: none;
+      background: none;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    
+    .tab:hover {
+      color: var(--color-primario);
+    }
+    
+    .tab.active {
+      color: var(--color-primario);
+      font-weight: 600;
+    }
+    
+    .tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: var(--color-primario);
+    }
+    
+    /* Contenido de pestañas */
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Tarjetas */
+    .tarjeta {
+      background-color: var(--color-tarjeta);
+      border-radius: 8px;
+      box-shadow: var(--sombra-tarjeta);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .tarjeta-titulo {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--color-texto);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .tarjeta-titulo svg {
+      width: 18px;
+      height: 18px;
+      color: var(--color-primario);
+    }
+    
+    /* Contenedores flex */
+    .contenedor-flex {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    /* Bloques de carga */
+    .bloque-carga {
+      background-color: var(--color-tarjeta);
+      border-radius: 8px;
+      box-shadow: var(--sombra-tarjeta);
+      padding: 1.5rem;
+      transition: all 0.2s ease;
+    }
+    
+    .bloque-carga:hover {
+      box-shadow: var(--sombra-elevada);
+    }
+    
+    .bloque-carga h3 {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--color-texto);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .bloque-carga h3 svg {
+      width: 18px;
+      height: 18px;
+      color: var(--color-primario);
+    }
+    
+    /* Input file personalizado */
+    .input-file {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+    
+    .input-file input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+    
+    .input-file-label {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      background-color: #f1f5f9;
+      border: 1px dashed #cbd5e1;
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .input-file-label:hover {
+      background-color: #e2e8f0;
+      border-color: #94a3b8;
+    }
+    
+    .input-file-label span {
+      display: block;
+      font-size: 0.875rem;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+    
+    .input-file-label strong {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-primario);
+    }
+    
+    .nombre-archivo {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 0.5rem;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Botones */
+    .boton {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      gap: 0.5rem;
+    }
+    
+    .boton svg {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .boton-primario {
+      background-color: var(--color-primario);
+      color: white;
+    }
+    
+    .boton-primario:hover {
+      background-color: #1d4ed8;
+    }
+    
+    .boton-secundario {
+      background-color: white;
+      color: var(--color-primario);
+      border: 1px solid var(--color-borde);
+    }
+    
+    .boton-secundario:hover {
+      background-color: #f1f5f9;
+    }
+    
+    .boton-exito {
+      background-color: var(--color-exito);
+      color: white;
+    }
+    
+    .boton-exito:hover {
+      background-color: #0d9e6e;
+    }
+    
+    .boton-error {
+      background-color: var(--color-error);
+      color: white;
+    }
+    
+    .boton-error:hover {
+      background-color: #dc2626;
+    }
+    
+    .boton-grande {
+      padding: 1rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    
+    .boton[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+      background-color: #cbd5e1;
+      color: #64748b;
+    }
+    
+    .grupo-botones {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    
+    /* Tablas */
+    .tabla-contenedor {
+      overflow-x: auto;
+      border-radius: 8px;
+      box-shadow: var(--sombra-tarjeta);
+      margin-bottom: 1.5rem;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: var(--color-tarjeta);
+      font-size: 0.875rem;
+    }
+    
+    th {
+      background-color: #f1f5f9;
+      color: #334155;
+      font-weight: 600;
+      text-align: left;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--color-borde);
+    }
+    
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--color-borde);
+      color: #334155;
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+    
+    .urgente {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+    
+    .alerta {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    
+    .normal {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    
+    .error {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+    
+    .pendiente {
+      background-color: #ffedd5;
+      color: #9a3412;
+    }
+    
+    /* Estado */
+    .estado {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .modal-contenido {
+      background-color: var(--color-tarjeta);
+      border-radius: 8px;
+      box-shadow: var(--sombra-elevada);
+      width: 100%;
+      max-width: 400px;
+      padding: 1.5rem;
+      animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .modal-titulo {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--color-texto);
+    }
+    
+    .modal-texto {
+      margin-bottom: 1.5rem;
+      color: #64748b;
+    }
+    
+    .modal-botones {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+    
+    /* Selectores */
+    select {
+      width: 100%;
+      padding: 0.625rem;
+      border-radius: 6px;
+      border: 1px solid var(--color-borde);
+      background-color: white;
+      font-size: 0.875rem;
+      color: var(--color-texto);
+      transition: all 0.2s ease;
+    }
+    
+    select:focus {
+      outline: none;
+      border-color: var(--color-primario);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    select[multiple] {
+      min-height: 120px;
+      padding: 0.5rem;
+    }
+    
+    /* Previsualización */
+    .previsualizacion {
+      margin-top: 1.5rem;
+    }
+    
+    /* Panel de ayuda */
+    .panel-ayuda {
+      background-color: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      color: #0369a1;
+    }
+    
+    .panel-ayuda h4 {
+      margin-bottom: 1rem;
+      color: #075985;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .panel-ayuda ul {
+      padding-left: 1.5rem;
+    }
+    
+    .panel-ayuda li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .panel-ayuda strong {
+      color: #0c4a6e;
+    }
+    
+    .boton-ayuda {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .boton-ayuda:hover {
+      background-color: #bae6fd;
+    }
+    
+    .oculto {
+      display: none;
+    }
+    
+    /* Responsivo */
+    @media (max-width: 768px) {
+      .contenedor-principal {
+        padding: 1rem;
+      }
+      
+      .encabezado {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+      }
+      
+      .tabs {
+        overflow-x: auto;
+        padding-left: 1rem;
+        scrollbar-width: none;
+      }
+      
+      .tabs::-webkit-scrollbar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Encabezado -->
+  <header class="encabezado">
+    <div class="logo">
+      <div class="logo-icono">S</div>
+      <div class="logo-texto">
+        <h1>Gestión Sirius</h1>
+        <p>Correrías y órdenes pendientes</p>
+      </div>
+    </div>
+    <div class="estado-sistema">
+      <div class="estado normal">Sistema operativo</div>
+    </div>
+  </header>
+
+  <div class="contenedor-principal">
+    <!-- Pestañas -->
+    <div class="tabs">
+      <button class="tab active" data-tab="gestor">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Gestor Sirius
+      </button>
+      <button class="tab" data-tab="unificar">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+        </svg>
+        Unificar Hojas
+      </button>
+    </div>
+
+    <!-- CONTENIDO GESTOR SIRIUS -->
+    <div id="gestor" class="tab-content active">
+      <div class="contenedor-flex">
+        <!-- BLOQUE SIRIUS -->
+        <div class="bloque-carga">
+          <h3>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Datos de Correrías
+          </h3>
+          <div class="input-file">
+            <input type="file" id="archivoExcel" accept=".xlsx, .xls" />
+            <label for="archivoExcel" class="input-file-label">
+              <span>Arrastra tu archivo o haz clic para seleccionar</span>
+              <strong>Subir archivo Correrías (.xls o .xlsx)</strong>
+            </label>
+            <div id="nombreArchivoExcel" class="nombre-archivo">Ningún archivo seleccionado</div>
+          </div>
+          <div class="grupo-botones">
+            <button id="procesarSirius" class="boton boton-primario">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Procesar
+            </button>
+            <button id="descargarExcel" class="boton boton-secundario" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Descargar
+            </button>
+          </div>
+        </div>
+
+        <!-- BLOQUE COMPARAR -->
+        <div class="bloque-carga">
+          <h3>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Detalle de Órdenes
+          </h3>
+          <div class="input-file">
+            <input type="file" id="archivoComparar" accept=".xlsx, .xls" />
+            <label for="archivoComparar" class="input-file-label">
+              <span>Arrastra tu archivo o haz clic para seleccionar</span>
+              <strong>Subir detalle de órdenes (.xls o .xlsx)</strong>
+            </label>
+            <div id="nombreArchivoComparar" class="nombre-archivo">Ningún archivo seleccionado</div>
+          </div>
+          <div class="grupo-botones">
+            <button id="procesarComparacion" class="boton boton-primario">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Procesar
+            </button>
+            <button id="descargarComparados" class="boton boton-secundario" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Descargar
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tarjeta">
+        <div class="grupo-botones" style="justify-content: center;">
+          <button id="descargarTodoCentro" class="boton boton-grande boton-exito" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Descargar Todo (2 Hojas)
+          </button>
+        </div>
+      </div>
+
+      <div id="preview-gestor" class="previsualizacion"></div>
+    </div>
+
+    <!-- CONTENIDO UNIFICADOR -->
+    <div id="unificar" class="tab-content">
+      <div class="tarjeta">
+        <h3 class="tarjeta-titulo">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Datos del Gestor Sirius
+        </h3>
+        <p>Los datos para unificar se tomarán automáticamente del archivo generado con "Descargar Todo"</p>
+        <div id="estadoArchivo" class="estado normal">No hay datos cargados</div>
+      </div>
+      
+      <div class="tarjeta">
+        <button id="btnAplicarConfig" class="boton boton-primario">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+          Aplicar Configuración Recomendada
+        </button>
+        
+        <button id="btnMostrarAyuda" class="boton boton-ayuda">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Mostrar Indicaciones para Unificar
+        </button>
+        
+        <div id="panelAyuda" class="panel-ayuda oculto">
+          <h4>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Indicaciones
+          </h4>
+          
+          <div id="ayudaDatosSirius">
+            <h5>Hoja <strong>Datos Sirius</strong>:</h5>
+            <ul>
+              <li><strong>Columna principal:</strong> Terminal</li>
+              <li><strong>Columnas a incluir:</strong> Correria, Descripción, OTS, Fecha de Programación</li>
+            </ul>
+          </div>
+          
+          <div id="ayudaDatosSiriusDuplicada" style="margin-top: 1rem;">
+            <h5>Hoja <strong>Datos Sirius (duplicada)</strong>:</h5>
+            <ul>
+              <li><strong>Columna principal:</strong> Tipo</li>
+              <li><strong>Columnas a incluir:</strong> Correria, Descripción, Terminal, Fecha de Programación</li>
+            </ul>
+          </div>
+          
+          <div id="ayudaDatosComparados" style="margin-top: 1rem;">
+            <h5>Hoja <strong>Datos Comparados</strong>:</h5>
+            <ul>
+              <li><strong>Columna principal:</strong> Correrías</li>
+              <li><strong>Columnas a incluir:</strong> Descripción de Tarea, ID Cliente, Nombre, Ciclo, Estado de Comunicación</li>
+            </ul>
+          </div>
+          
+          <div id="ayudaDatosComparadosDuplicada" style="margin-top: 1rem;">
+            <h5>Hoja <strong>Datos Comparados (duplicada)</strong>:</h5>
+            <ul>
+              <li><strong>Columna principal:</strong> Estado</li>
+              <li><strong>Columnas a incluir:</strong> Correria, Descripción de Tarea, ID Cliente, Estado de Comunicación, TPL</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      
+      <div id="duplicateControls" class="tarjeta" style="display:none;">
+        <h3 class="tarjeta-titulo">Duplicar Hoja</h3>
+        <div style="display: flex; gap: 0.75rem; align-items: flex-end;">
+          <div style="flex: 1;">
+            <label for="sheetToDuplicate">Selecciona hoja a duplicar:</label>
+            <select id="sheetToDuplicate"></select>
+          </div>
+          <button id="duplicateBtn" class="boton boton-primario">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Duplicar
+          </button>
+        </div>
+      </div>
+      
+      <div id="selectorsUnificar" class="contenedor-flex"></div>
+      
+      <div class="tarjeta">
+        <div class="grupo-botones" style="justify-content: center;">
+          <button id="processButtonUnificar" class="boton boton-primario" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Procesar y Previsualizar
+          </button>
+          <button id="downloadButtonUnificar" class="boton boton-exito" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Descargar archivo procesado
+          </button>
+        </div>
+      </div>
+      
+      <div id="previewsContainerUnificar" class="contenedor-flex"></div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmación -->
+  <div id="confirmModal" class="modal">
+    <div class="modal-contenido">
+      <h3 class="modal-titulo">¿Qué deseas hacer con el archivo generado?</h3>
+      <p class="modal-texto">Se ha procesado correctamente el archivo con las dos hojas de datos.</p>
+      <div class="modal-botones">
+        <button id="btnCancelar" class="boton boton-secundario">Cancelar</button>
+        <button id="btnTrabajar" class="boton boton-primario">Trabajar sin descargar</button>
+        <button id="btnDescargar" class="boton boton-exito">Descargar archivo</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // =============================================
+  // PARTE DEL GESTOR SIRIUS
+  // =============================================
+  let datosOriginales = [];
+  let encabezadoOriginal = [];
+  let datosFiltradosFinal = [];
+  let datosComparar = [];
+  let comparadosFiltradosFinal = [];
+  let workbookCompleto = null;
+
+  const columnasExcluir = [3, 5, 6, 7, 9];
+
+  // Actualizar nombres de archivos
+  document.getElementById('archivoExcel').addEventListener('change', function(e) {
+    const nombre = e.target.files[0]?.name || 'Ningún archivo seleccionado';
+    document.getElementById('nombreArchivoExcel').textContent = nombre;
+  });
+
+  document.getElementById('archivoComparar').addEventListener('change', function(e) {
+    const nombre = e.target.files[0]?.name || 'Ningún archivo seleccionado';
+    document.getElementById('nombreArchivoComparar').textContent = nombre;
+  });
+
+  function actualizarEstadoBotones() {
+    const btnDescargarSirius = document.getElementById('descargarExcel');
+    const btnDescargarComparados = document.getElementById('descargarComparados');
+    const btnDescargarTodo = document.getElementById('descargarTodoCentro');
+
+    if (datosFiltradosFinal.length) {
+      btnDescargarSirius.disabled = false;
+      btnDescargarSirius.classList.remove('boton-secundario');
+      btnDescargarSirius.classList.add('boton-exito');
+    }
+    if (comparadosFiltradosFinal.length) {
+      btnDescargarComparados.disabled = false;
+      btnDescargarComparados.classList.remove('boton-secundario');
+      btnDescargarComparados.classList.add('boton-exito');
+    }
+    if (datosFiltradosFinal.length && comparadosFiltradosFinal.length) {
+      btnDescargarTodo.disabled = false;
+    }
+  }
+
+  function formatearFechaExcel(valor) {
+    if (typeof valor === 'number') {
+      const fecha = new Date(Math.round((valor - 25569) * 86400 * 1000));
+      return formatearFecha(fecha);
+    }
+    if (typeof valor === 'string' && valor.includes('/')) return valor;
+    return '';
+  }
+
+  function formatearFecha(fecha) {
+    const d = new Date(fecha);
+    if (isNaN(d)) return '';
+    const dia = String(d.getDate()).padStart(2, '0');
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const año = d.getFullYear();
+    return `${dia}/${mes}/${año}`;
+  }
+
+  function diferenciaDias(fechaStr) {
+    const partes = fechaStr.split('/');
+    const fecha = new Date(`${partes[2]}-${partes[1]}-${partes[0]}`);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fecha.setHours(0, 0, 0, 0);
+    return Math.floor((hoy - fecha) / (1000 * 60 * 60 * 24));
+  }
+
+  function mostrarAlerta(mensaje, tipo = 'info') {
+    // Implementar un sistema de notificaciones más elegante
+    alert(mensaje); // Temporal - reemplazar con notificaciones bonitas
+  }
+
+  function procesarSirius() {
+    if (!datosOriginales.length) return mostrarAlerta("Primero suba un archivo Excel.", 'error');
+
+    const indiceFechaOriginal = encabezadoOriginal.findIndex(col => col.toLowerCase().includes('programaci'));
+    if (indiceFechaOriginal === -1) return mostrarAlerta("No se encontró la columna de fecha de programación.", 'error');
+
+    const encabezadoFiltrado = encabezadoOriginal.filter((_, i) => !columnasExcluir.includes(i));
+    encabezadoFiltrado.push("Estado", "TIPO");
+
+    const datos = datosOriginales
+      .filter((row, idx) => idx > 0 && row[0])
+      .map(row => {
+        const nuevaFila = row.filter((_, i) => !columnasExcluir.includes(i));
+        const fechaOriginal = row[indiceFechaOriginal];
+        const fechaFormateada = formatearFechaExcel(fechaOriginal);
+        const indiceFechaFiltrada = encabezadoFiltrado.findIndex(col => col.toLowerCase().includes('programaci'));
+        if (indiceFechaFiltrada !== -1) nuevaFila[indiceFechaFiltrada] = fechaFormateada;
+        const dias = diferenciaDias(fechaFormateada);
+        nuevaFila.push(dias >= 4 ? 'Descarga urgente' : dias === 3 ? 'Favor descargar' : 'A tiempo');
+        nuevaFila.push(String(row[0]).trim().length > 9 ? 'LECTURA' : 'SCR');
+        return nuevaFila;
+      });
+
+    datosFiltradosFinal = [encabezadoFiltrado, ...datos];
+    mostrarVistaPreviaGestor(datosFiltradosFinal, 'Datos procesados Sirius');
+    actualizarEstadoBotones();
+    mostrarAlerta("Datos de Correrías procesados correctamente.", 'exito');
+  }
+
+  function mostrarVistaPreviaGestor(datos, titulo) {
+    let html = `<div class="tarjeta"><h3 class="tarjeta-titulo">${titulo}</h3><div class="tabla-contenedor"><table><tr>`;
+    html += datos[0].map(col => `<th>${col}</th>`).join('') + '</tr>';
+    
+    datos.slice(1).forEach(row => {
+      const estado = row[row.length - 2];
+      const clase = estado === 'Descarga urgente' ? 'urgente' :
+                    estado === 'Favor descargar' ? 'alerta' :
+                    'normal';
+      
+      html += `<tr>` + row.map((cell, i) => {
+          let cellClass = '';
+          if (i === row.length - 2) { // Columna ESTADO
+              cellClass = `class="${clase}"`;
+          }
+          return `<td ${cellClass}>${cell ?? ''}</td>`;
+      }).join('') + '</tr>';
+    });
+    
+    html += '</table></div></div>';
+    document.getElementById('preview-gestor').innerHTML = html;
+  }
+
+  function decodificarHTML(html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    return doc.documentElement.textContent;
+  }
+
+  // Event listeners del Gestor Sirius
+  document.getElementById('descargarExcel').addEventListener('click', () => {
+    if (!datosFiltradosFinal.length) return mostrarAlerta("No hay datos para descargar Sirius.", 'error');
+
+    const datosDecodificados = datosFiltradosFinal.map(fila =>
+      fila.map(celda => typeof celda === 'string' ? decodificarHTML(celda) : celda)
+    );
+
+    const ws = XLSX.utils.aoa_to_sheet(datosDecodificados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Datos Sirius");
+    XLSX.writeFile(wb, "datos_sirius.xlsx");
+    mostrarAlerta("Archivo Sirius descargado correctamente.", 'exito');
+  });
+
+  document.getElementById('descargarComparados').addEventListener('click', () => {
+    if (!comparadosFiltradosFinal.length) return mostrarAlerta("No hay datos comparados para descargar.", 'error');
+    const datosDecodificados = comparadosFiltradosFinal.map(fila =>
+      fila.map(celda => typeof celda === 'string' ? decodificarHTML(celda) : celda)
+    );
+
+    const ws = XLSX.utils.aoa_to_sheet(datosDecodificados);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Datos Comparados");
+    XLSX.writeFile(wb, "datos_comparados.xlsx");
+    mostrarAlerta("Archivo Comparados descargado correctamente.", 'exito');
+  });
+
+  document.getElementById('descargarTodoCentro').addEventListener('click', () => {
+    if (!datosFiltradosFinal.length || !comparadosFiltradosFinal.length) 
+      return mostrarAlerta("Faltan datos para crear el archivo completo.", 'error');
+
+    const datosFiltradosDecodificados = datosFiltradosFinal.map(fila =>
+      fila.map(celda => typeof celda === 'string' ? decodificarHTML(celda) : celda)
+    );
+
+    const comparadosFiltradosDecodificados = comparadosFiltradosFinal.map(fila =>
+      fila.map(celda => typeof celda === 'string' ? decodificarHTML(celda) : celda)
+    );
+
+    // Crear el workbook pero no descargar todavía
+    workbookCompleto = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.aoa_to_sheet(datosFiltradosDecodificados);
+    const ws2 = XLSX.utils.aoa_to_sheet(comparadosFiltradosDecodificados);
+    XLSX.utils.book_append_sheet(workbookCompleto, ws1, "Datos Sirius");
+    XLSX.utils.book_append_sheet(workbookCompleto, ws2, "Datos Comparados");
+    
+    // Mostrar modal de confirmación
+    document.getElementById('estadoArchivo').textContent = 'Datos listos para trabajar o descargar';
+    document.getElementById('estadoArchivo').className = 'estado exito';
+    document.getElementById('confirmModal').style.display = 'flex';
+  });
+
+  // Manejar el modal de confirmación
+  document.getElementById('btnDescargar').addEventListener('click', () => {
+    // Descargar el archivo
+    XLSX.writeFile(workbookCompleto, "datos_completos.xlsx");
+    document.getElementById('confirmModal').style.display = 'none';
+    mostrarAlerta("Archivo completo descargado correctamente.", 'exito');
+    
+    // Habilitar el procesamiento en la pestaña Unificar
+    document.getElementById('processButtonUnificar').disabled = false;
+    document.getElementById('estadoArchivo').textContent = 'Datos cargados - Archivo descargado';
+  });
+
+  document.getElementById('btnTrabajar').addEventListener('click', () => {
+    // Solo trabajar sin descargar
+    document.getElementById('confirmModal').style.display = 'none';
+    mostrarAlerta("Archivo listo para trabajar en la pestaña Unificar.", 'exito');
+    
+    // Habilitar el procesamiento en la pestaña Unificar
+    document.getElementById('processButtonUnificar').disabled = false;
+    document.getElementById('estadoArchivo').textContent = 'Datos cargados - Listo para trabajar';
+  });
+
+  document.getElementById('btnCancelar').addEventListener('click', () => {
+    // Cancelar y no hacer nada
+    document.getElementById('confirmModal').style.display = 'none';
+    workbookCompleto = null;
+    document.getElementById('estadoArchivo').textContent = 'No hay datos cargados';
+    document.getElementById('estadoArchivo').className = 'estado normal';
+  });
+
+  document.getElementById('archivoExcel').addEventListener('change', function(e) {
+    const archivo = e.target.files[0];
+    const lector = new FileReader();
+    lector.onload = function(e) {
+      const datos = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(datos, { type: 'array' });
+      const hoja = workbook.Sheets[workbook.SheetNames[0]];
+      const todasLasFilas = XLSX.utils.sheet_to_json(hoja, { header: 1 });
+      encabezadoOriginal = todasLasFilas[0];
+      datosOriginales = todasLasFilas;
+      mostrarAlerta("Archivo de Correrías cargado correctamente.", 'exito');
+    };
+    lector.readAsArrayBuffer(archivo);
+  });
+
+  document.getElementById('archivoComparar').addEventListener('change', function(e) {
+    const archivo = e.target.files[0];
+    const lector = new FileReader();
+    lector.onload = function(e) {
+      const datos = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(datos, { type: 'array' });
+      const hoja = workbook.Sheets[workbook.SheetNames[0]];
+      datosComparar = XLSX.utils.sheet_to_json(hoja, { header: 1 });
+      mostrarAlerta("Archivo de Órdenes cargado correctamente.", 'exito');
+    };
+    lector.readAsArrayBuffer(archivo);
+  });
+
+  document.getElementById('procesarSirius').addEventListener('click', procesarSirius);
+
+  document.getElementById('procesarComparacion').addEventListener('click', () => {
+    if (!datosFiltradosFinal.length) return mostrarAlerta("Primero debe procesar SIRIUS CORRERIAS.", 'error');
+    if (!datosComparar.length) return mostrarAlerta("Primero debe subir un archivo para comparar.", 'error');
+
+    const datosSCR = datosFiltradosFinal
+      .filter((fila, idx) => idx > 0 && fila[fila.length - 1] === 'SCR')
+      .map(fila => fila[0]);
+
+    const encabezadoSirius = datosFiltradosFinal[0];
+    const idxTerminal = encabezadoSirius.findIndex(col => String(col).toUpperCase() === 'TERMINAL');
+    const idxEstado = encabezadoSirius.length - 2;
+    const mapaSCR = new Map();
+    datosFiltradosFinal.slice(1).forEach(fila => {
+      const correria = fila[0];
+      const tpl = idxTerminal !== -1 ? fila[idxTerminal] : '';
+      const estado = fila[idxEstado];
+      mapaSCR.set(correria, { tpl, estado });
+    });
+
+    // Índices para las columnas de estado
+    const indices = { 
+      D: 3, E: 4, H: 7, I: 8, J: 9, M: 12, W: 22, AA: 26, AN: 39, AU: 46, AV: 47,
+      C: 2, // Estado Tarea
+      D: 3  // Estado Comunicación
+    };
+
+    const encabezadoBase = datosComparar[0];
+    
+    // MODIFICACIÓN: Filtrar datosComparar para eliminar filas donde M es "I" y AV es "D"
+    const datosCompararFiltrados = datosComparar.filter((row, index) => {
+     if (index === 0) return true; // Mantener el encabezado
+      
+      const valorM = row[indices.M]?.toString().trim().toUpperCase();
+      const valorAV = row[indices.AV]?.toString().trim().toUpperCase();
+      
+      return !(
+        (valorM === 'I' && valorAV === 'D') || 
+        (valorM === 'C' && valorAV === 'D')
+      );
+    });
+
+    const encabezado = [
+      encabezadoBase[indices.D] ?? 'Columna D', encabezadoBase[indices.E] ?? 'Columna E',
+      encabezadoBase[indices.H] ?? 'Columna H', encabezadoBase[indices.I] ?? 'Columna I',
+      encabezadoBase[indices.J] ?? 'Columna J', encabezadoBase[indices.M] ?? 'Columna M',
+      encabezadoBase[indices.W] ?? 'Columna W', encabezadoBase[indices.AA] ?? 'Columna AA',
+      encabezadoBase[indices.AN] ?? 'Columna AN', encabezadoBase[indices.AU] ?? 'Columna AU',
+      encabezadoBase[indices.AV] ?? 'Columna AV', 'TPL', 'ESTADO'
+    ];
+
+    const filas = [];
+    // MODIFICACIÓN: Usar datosCompararFiltrados en lugar de datosComparar
+    datosCompararFiltrados.slice(1).forEach(row => {
+      const correria = row[3];
+      if (datosSCR.includes(correria)) {
+        const tplEstado = mapaSCR.get(correria) || { tpl: '', estado: '' };
+        
+        filas.push([ 
+          row[indices.D] ?? '', row[indices.E] ?? '', row[indices.H] ?? '', 
+          row[indices.I] ?? '', row[indices.J] ?? '', row[indices.M] ?? '', 
+          row[indices.W] ?? '', row[indices.AA] ?? '', row[indices.AN] ?? '', 
+          row[indices.AU] ?? '', row[indices.AV] ?? '', tplEstado.tpl, tplEstado.estado
+        ]);
+      }
+    });
+
+    comparadosFiltradosFinal = [encabezado, ...filas];
+    mostrarVistaPreviaGestor(comparadosFiltradosFinal, 'Datos Comparados');
+    actualizarEstadoBotones();
+    mostrarAlerta("Comparación de datos completada correctamente.", 'exito');
+  });
+
+  // =============================================
+  // PARTE DEL UNIFICADOR
+  // =============================================
+  let workbookUnificar, sheetNamesUnificar = [];
+  let processedSheetsUnificar = {};
+  let correriaFechaMapUnificar = {};
+
+  // Funciones del Unificador
+  function renderSelectorsUnificar() {
+    const selDiv = document.getElementById('selectorsUnificar');
+    selDiv.innerHTML = '';
+    document.getElementById('previewsContainerUnificar').innerHTML = '';
+    sheetNamesUnificar.forEach((name, idx) => addSelectorBlockUnificar(name, idx));
+  }
+
+  function addSelectorBlockUnificar(sheetName, idx) {
+    const selDiv = document.getElementById('selectorsUnificar');
+    
+    const sheetDiv = document.createElement('div');
+    sheetDiv.className = 'bloque-carga';
+    
+    const lblMain = document.createElement('h3');
+    lblMain.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg> ${sheetName}`;
+    sheetDiv.appendChild(lblMain);
+    
+    const divMainCol = document.createElement('div');
+    divMainCol.style.marginBottom = '1rem';
+    
+    const lblMainCol = document.createElement('label');
+    lblMainCol.textContent = `Columna principal:`;
+    lblMainCol.style.display = 'block';
+    lblMainCol.style.marginBottom = '0.5rem';
+    lblMainCol.style.fontSize = '0.875rem';
+    divMainCol.appendChild(lblMainCol);
+    
+    const selectMain = document.createElement('select');
+    selectMain.id = `selectorMainUnificar${idx}`;
+    selectMain.style.width = '100%';
+    divMainCol.appendChild(selectMain);
+    sheetDiv.appendChild(divMainCol);
+    
+    const divIncCol = document.createElement('div');
+    
+    const lblInc = document.createElement('label');
+    lblInc.textContent = `Columnas a incluir: (Ctrl+Click para múltiples)`;
+    lblInc.style.display = 'block';
+    lblInc.style.marginBottom = '0.5rem';
+    lblInc.style.fontSize = '0.875rem';
+    divIncCol.appendChild(lblInc);
+    
+    const selectInc = document.createElement('select');
+    selectInc.id = `selectorIncludeUnificar${idx}`;
+    selectInc.multiple = true;
+    selectInc.style.width = '100%';
+    divIncCol.appendChild(selectInc);
+    sheetDiv.appendChild(divIncCol);
+    
+    selDiv.appendChild(sheetDiv);
+
+    // Preview container
+    const preDiv = document.getElementById('previewsContainerUnificar');
+    const wrap = document.createElement('div');
+    wrap.className = 'bloque-carga';
+    wrap.innerHTML = `<h3>
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+      Vista previa: ${sheetName}
+    </h3><div id="previewUnificar${idx}" style="overflow-x: auto;"></div>`;
+    preDiv.appendChild(wrap);
+
+    // Poblar opciones
+    const data = XLSX.utils.sheet_to_json(workbookUnificar.Sheets[sheetName], { defval: '' });
+    const headers = data.length ? Object.keys(data[0]) : [];
+    headers.forEach(h => {
+      const opt1 = document.createElement('option');
+      opt1.value = h;
+      opt1.textContent = h;
+      selectMain.appendChild(opt1);
+      const opt2 = opt1.cloneNode(true);
+      selectInc.appendChild(opt2);
+    });
+  }
+
+  function populateDuplicateDropdownUnificar() {
+    const dd = document.getElementById('sheetToDuplicate');
+    dd.innerHTML = '';
+    sheetNamesUnificar.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      dd.appendChild(opt);
+    });
+  }
+
+  function unifyDataUnificar(data, mainColumn, includedColumns, sheetIndex) {
+    let grouped = {};
+    data.forEach(row => {
+      const key = row[mainColumn] || '(Sin valor)';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(row);
+    });
+    
+    const result = [];
+    for (const key in grouped) {
+      let blocks = grouped[key].map(row => {
+        let info = Object.keys(row)
+          .filter(col => col !== mainColumn && includedColumns.includes(col))
+          .map(col => `${col}: ${row[col]}`)
+          .join('\n');
+        
+        if (row["Fecha de Programación"] || row["Estado Comunicación"]) {
+          info += '\n-----------------';
+        }
+        return info;
+      });
+      
+      if (sheetIndex > 0) {
+        const corr = key;
+        if (correriaFechaMapUnificar[corr]) {
+          blocks.unshift(`Fecha de Programación: ${correriaFechaMapUnificar[corr]}\n-----------------`);
+        }
+      }
+      
+      blocks = blocks.sort((a,b) => {
+        const da = extractDateUnificar(a), db = extractDateUnificar(b);
+        return da && db ? da - db : 0;
+      });
+      
+      let combined = '', last = null;
+      blocks.forEach((blk,i) => {
+        const cur = extractCorreriaUnificar(blk);
+        if (i>0 && cur !== last) combined += '\n----------------------\n';
+        else if (i>0) combined += '\n';
+        combined += blk;
+        last = cur;
+      });
+      
+      result.push({ [mainColumn]: key, "Información": combined });
+    }
+    return result;
+  }
+
+  function extractDateUnificar(text) {
+    const m = text.match(/(\d{2}\/\d{2}\/\d{4})/);
+    if (m) {
+      const p = m[1].split('/');
+      return new Date(p[2], p[1]-1, p[0]);
+    }
+    return null;
+  }
+
+  function extractCorreriaUnificar(text) {
+    const m = text.match(/CORRERIA: (.+)/i);
+    return m ? m[1].trim() : '';
+  }
+
+  function renderPreviewUnificar(id, data) {
+    const c = document.getElementById(id);
+    c.innerHTML = '';
+    if (!data.length) return;
+    
+    const tbl = document.createElement('table');
+    const thead = document.createElement('thead'), tr = document.createElement('tr');
+    
+    Object.keys(data[0]).forEach(h => {
+      const th = document.createElement('th');
+      th.textContent = h;
+      tr.appendChild(th);
+    });
+    
+    thead.appendChild(tr);
+    tbl.appendChild(thead);
+    
+    const tbody = document.createElement('tbody');
+    data.forEach(row => {
+      const tr2 = document.createElement('tr');
+      Object.entries(row).forEach(([k,v]) => {
+        const td = document.createElement('td');
+        if (k === "Información") {
+          v.split('\n').forEach(line => {
+            const d = document.createElement('div');
+            d.textContent = line;
+            
+            if (line.startsWith('---')) {
+              d.style.fontWeight = 'bold';
+            } else {
+              const cd = extractDateUnificar(line);
+              if (cd) {
+                const diff = Math.floor((new Date().setHours(0,0,0,0) - cd)/(1000*60*60*24));
+                if (diff <= 1) {
+                  d.style.backgroundColor = '#00cc00';
+                  d.style.color = 'white';
+                } else if (diff == 2) {
+                  d.style.backgroundColor = '#ffcccc';
+                } else if (diff > 3) {
+                  d.style.backgroundColor = '#ff0000';
+                  d.style.color = 'white';
+                }
+              }
+            }
+            td.appendChild(d);
+          });
+        } else {
+          td.textContent = v;
+        }
+        tr2.appendChild(td);
+      });
+      tbody.appendChild(tr2);
+    });
+    
+    tbl.appendChild(tbody);
+    c.appendChild(tbl);
+  }
+
+  // Mostrar/ocultar panel de ayuda
+  document.getElementById('btnMostrarAyuda').addEventListener('click', function() {
+    const panel = document.getElementById('panelAyuda');
+    panel.classList.toggle('oculto');
+    
+    // Cambiar ícono y texto del botón
+    const icono = this.querySelector('svg');
+    const estaVisible = !panel.classList.contains('oculto');
+    
+    if (estaVisible) {
+      this.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+        Ocultar Indicaciones
+      `;
+    } else {
+      this.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+        Mostrar Indicaciones
+      `;
+    }
+  });
+
+  // Función para aplicar configuraciones recomendadas
+  function aplicarConfiguracionRecomendada() {
+    if (!workbookUnificar || !sheetNamesUnificar.length) {
+      mostrarAlerta("Primero debe cargar los datos en la pestaña Unificar", 'error');
+      return;
+    }
+
+    // Configuración para Datos Sirius
+    const idxSirius = sheetNamesUnificar.findIndex(name => name.includes("Datos Sirius") && !name.includes("copia"));
+    if (idxSirius !== -1) {
+      const mainSelect = document.getElementById(`selectorMainUnificar${idxSirius}`);
+      const includeSelect = document.getElementById(`selectorIncludeUnificar${idxSirius}`);
+      
+      if (mainSelect && includeSelect) {
+        // Seleccionar Terminal como principal
+        for (let i = 0; i < mainSelect.options.length; i++) {
+          if (mainSelect.options[i].text.toLowerCase().includes('terminal')) {
+            mainSelect.selectedIndex = i;
+            break;
+          }
+        }
+        
+        // Seleccionar columnas a incluir
+        Array.from(includeSelect.options).forEach(option => {
+          const text = option.text.toLowerCase();
+          option.selected = text.includes('correría') || 
+                          text.includes('descripción') || 
+                          text.includes('ots') || 
+                          text.includes('fecha de programación');
+        });
+      }
+    }
+
+    // Configuración para Datos Sirius duplicada
+    const idxSiriusDup = sheetNamesUnificar.findIndex(name => name.includes("Datos Sirius") && name.includes("copia"));
+    if (idxSiriusDup !== -1) {
+      const mainSelect = document.getElementById(`selectorMainUnificar${idxSiriusDup}`);
+      const includeSelect = document.getElementById(`selectorIncludeUnificar${idxSiriusDup}`);
+      
+      if (mainSelect && includeSelect) {
+        // Seleccionar Tipo como principal
+        for (let i = 0; i < mainSelect.options.length; i++) {
+          if (mainSelect.options[i].text.toLowerCase().includes('tipo')) {
+            mainSelect.selectedIndex = i;
+            break;
+          }
+        }
+        
+        // Seleccionar columnas a incluir
+        Array.from(includeSelect.options).forEach(option => {
+          const text = option.text.toLowerCase();
+          option.selected = text.includes('correría') || 
+                          text.includes('descripción') || 
+                          text.includes('terminal') || 
+                          text.includes('fecha de programación');
+        });
+      }
+    }
+
+    // Configuración para Datos Comparados
+    const idxComparados = sheetNamesUnificar.findIndex(name => name.includes("Datos Comparados") && !name.includes("copia"));
+    if (idxComparados !== -1) {
+      const mainSelect = document.getElementById(`selectorMainUnificar${idxComparados}`);
+      const includeSelect = document.getElementById(`selectorIncludeUnificar${idxComparados}`);
+      
+      if (mainSelect && includeSelect) {
+        // Seleccionar Correrías como principal
+        for (let i = 0; i < mainSelect.options.length; i++) {
+          if (mainSelect.options[i].text.toLowerCase().includes('correria')) {
+            mainSelect.selectedIndex = i;
+            break;
+          }
+        }
+        
+        // Seleccionar columnas a incluir
+        Array.from(includeSelect.options).forEach(option => {
+          const text = option.text.toLowerCase();
+          option.selected = text.includes('descripción') ||
+                          text.includes('cliente') ||  
+                          text === 'nombre' || 
+                          text.includes('ciclo') || 
+                          text === 'estado comunicación';
+        });
+      }
+    }
+
+    // Configuración para Datos Comparados duplicada
+    const idxComparadosDup = sheetNamesUnificar.findIndex(name => name.includes("Datos Comparados") && name.includes("copia"));
+    if (idxComparadosDup !== -1) {
+      const mainSelect = document.getElementById(`selectorMainUnificar${idxComparadosDup}`);
+      const includeSelect = document.getElementById(`selectorIncludeUnificar${idxComparadosDup}`);
+      
+      if (mainSelect && includeSelect) {
+        // Seleccionar ESTADO como principal (exacto)
+        for (let i = 0; i < mainSelect.options.length; i++) {
+            if (mainSelect.options[i].text.trim().toLowerCase() === 'estado') {
+                mainSelect.selectedIndex = i;
+                break;
+              }
+            }
+            
+            // Seleccionar columnas a incluir
+            Array.from(includeSelect.options).forEach(option => {
+              const text = option.text.toLowerCase();
+              option.selected = text.includes('correría') || 
+                              text.includes('descripción') | 
+                              text.includes('cliente') ||   
+                              text === 'estado comunicación' || 
+                              text.includes('tpl');
+            });
+          }
+        }
+
+    mostrarAlerta("Configuración recomendada aplicada. Verifique las selecciones antes de procesar.", 'exito');
+  }
+
+  // Event listeners del Unificador
+  document.getElementById('processButtonUnificar').addEventListener('click', () => {
+    if (!workbookCompleto) {
+      mostrarAlerta("Primero debe generar el archivo con 'Descargar Todo' en la pestaña Gestor Sirius", 'error');
+      return;
+    }
+
+    workbookUnificar = workbookCompleto;
+    sheetNamesUnificar = workbookUnificar.SheetNames.slice();
+    
+    processedSheetsUnificar = {};
+    correriaFechaMapUnificar = {};
+    
+    sheetNamesUnificar.forEach((name, idx) => {
+      const sheet = workbookUnificar.Sheets[name];
+      const data = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const mainCol = document.getElementById(`selectorMainUnificar${idx}`).value;
+      const incCols = Array.from(document.getElementById(`selectorIncludeUnificar${idx}`).selectedOptions).map(o => o.value);
+
+      if (idx === 0) {
+        data.forEach(r => {
+          if (r['CORRERIA'] && r['Fecha de Programación']) {
+            correriaFechaMapUnificar[r['CORRERIA']] = r['Fecha de Programación'];
+          }
+        });
+      }
+
+      const result = unifyDataUnificar(data, mainCol, incCols, idx);
+      processedSheetsUnificar[name] = result;
+      renderPreviewUnificar(`previewUnificar${idx}`, result);
+    });
+    
+    document.getElementById('duplicateControls').style.display = 'block';
+    document.getElementById('downloadButtonUnificar').disabled = false;
+    mostrarAlerta("Datos unificados y procesados correctamente.", 'exito');
+  });
+
+  document.getElementById('duplicateBtn').addEventListener('click', () => {
+    const name = document.getElementById('sheetToDuplicate').value;
+    if (!name) { mostrarAlerta('Selecciona una hoja para duplicar', 'error'); return; }
+    
+    const orig = workbookUnificar.Sheets[name];
+    const copy = JSON.parse(JSON.stringify(orig));
+    let newName = name + '_copia', i = 1;
+    
+    while (sheetNamesUnificar.includes(newName)) {
+      i++;
+      newName = name + '_copia' + i;
+    }
+    
+    workbookUnificar.SheetNames.push(newName);
+    workbookUnificar.Sheets[newName] = copy;
+    sheetNamesUnificar.push(newName);
+    addSelectorBlockUnificar(newName, sheetNamesUnificar.length - 1);
+    populateDuplicateDropdownUnificar();
+    mostrarAlerta(`Hoja "${name}" duplicada como "${newName}"`, 'exito');
+  });
+
+  document.getElementById('downloadButtonUnificar').addEventListener('click', () => {
+    const newWb = XLSX.utils.book_new();
+    Object.entries(processedSheetsUnificar).forEach(([nm, dt]) => {
+      const ws = XLSX.utils.json_to_sheet(dt);
+      XLSX.utils.book_append_sheet(newWb, ws, nm.substring(0,31));
+    });
+    XLSX.writeFile(newWb, 'procesado_unificado.xlsx');
+    mostrarAlerta("Archivo unificado descargado correctamente.", 'exito');
+  });
+
+  // =============================================
+  // CONTROL DE PESTAÑAS
+  // =============================================
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      tab.classList.add('active');
+      const tabId = tab.getAttribute('data-tab');
+      document.getElementById(tabId).classList.add('active');
+      
+      // Cuando se activa la pestaña Unificar, cargar los selectores si hay datos
+      if (tabId === 'unificar' && workbookCompleto) {
+        workbookUnificar = workbookCompleto;
+        sheetNamesUnificar = workbookUnificar.SheetNames.slice();
+        renderSelectorsUnificar();
+        populateDuplicateDropdownUnificar();
+      }
+    });
+  });
+
+  // Inicializar el botón de procesar en Unificar como deshabilitado
+  document.getElementById('processButtonUnificar').disabled = true;
+  
+  // Asignar evento al botón de aplicar configuración
+  document.getElementById('btnAplicarConfig').addEventListener('click', aplicarConfiguracionRecomendada);
+  </script>
+</body>
+</html>

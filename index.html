@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Herramientas Integrado</title>
+    <style>
+        :root {
+            --bg-color: #f0f4f8;
+            --sidebar-bg: #ffffff;
+            --text-color: #334155;
+            --header-color: #1e293b;
+            --accent-color: #3b82f6;
+            --hover-bg: #eff6ff;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h2 {
+            margin: 0;
+            color: var(--header-color);
+            font-size: 1.5rem;
+        }
+
+        .tool-list {
+            list-style: none;
+            padding: 10px 0;
+            margin: 0;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .tool-list li a {
+            display: block;
+            padding: 12px 20px;
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .tool-list li a:hover {
+            background-color: var(--hover-bg);
+            color: var(--accent-color);
+        }
+
+        .tool-list li a.active {
+            background-color: var(--hover-bg);
+            color: var(--accent-color);
+            border-left-color: var(--accent-color);
+            font-weight: 600;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #toolFrame {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        /* Para pantallas pequeñas */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                align-items: center;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                overflow-x: auto;
+            }
+            .sidebar-header {
+                border-bottom: none;
+                padding: 10px 15px;
+            }
+            .sidebar-header h2 {
+                font-size: 1.2rem;
+            }
+            .tool-list {
+                display: flex;
+                flex-direction: row;
+                padding: 0;
+            }
+            .tool-list li {
+                white-space: nowrap;
+            }
+            .tool-list li a {
+                border-left: none;
+                border-bottom: 3px solid transparent;
+            }
+             .tool-list li a.active {
+                border-bottom-color: var(--accent-color);
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h2>Herramientas</h2>
+        </div>
+        <ul class="tool-list">
+            <li><a href="welcome.html" class="tool-link active">Bienvenida</a></li>
+            <li><a href="gps.html" class="tool-link">GPS Decoder</a></li>
+            <li><a href="gestor_revisiones_unificado.html" class="tool-link">Gestor Revisiones</a></li>
+            <li><a href="historico_analizador_tiempos.html" class="tool-link">Analizador Histórico</a></li>
+            <li><a href="lecturas-json.html" class="tool-link">Lecturas a JSON</a></li>
+            <li><a href="sirius_total_funcionable.html" class="tool-link">Gestión Sirius</a></li>
+            <!-- Agrega aquí más herramientas en el futuro -->
+        </ul>
+    </nav>
+
+    <main class="main-content">
+        <iframe id="toolFrame" src="welcome.html"></iframe>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const links = document.querySelectorAll('.tool-link');
+            const iframe = document.getElementById('toolFrame');
+
+            links.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault(); // Evita la navegación normal
+                    
+                    // Actualiza la clase 'active' para el feedback visual
+                    links.forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Cambia el contenido del iframe
+                    const url = this.getAttribute('href');
+                    iframe.src = url;
+                });
+            });
+        });
+    </script>
+</body>
+</html>
