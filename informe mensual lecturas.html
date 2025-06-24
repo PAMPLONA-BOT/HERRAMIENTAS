@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador Multifunción</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .container { max-width: 1400px; }
+        .card-header { background-color: #0d6efd; color: white; }
+        #status, #progress-status { font-weight: bold; }
+        .transfer-list { height: 400px; }
+        #fileListContainer { background-color: #e9ecef; border-radius: .375rem; padding: 1rem; min-height: 60px; }
+        #outputTable { max-height: 60vh; overflow-y: auto; margin-top: 1rem; }
+        #progress-container { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <!-- SECCIÓN 1: CARGA Y FILTROS -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header"><h1 class="h4 mb-0">Herramienta de Consolidación de Datos</h1></div>
+            <div class="card-body">
+                <p><strong>Instrucciones:</strong> El sistema buscará la columna de encabezado "ZONA" para el filtro regional.</p>
+                <div class="row align-items-end">
+                    <div class="col-lg-4 mb-3">
+                        <label class="form-label"><strong>1. Añade Archivos Excel:</strong></label>
+                        <input class="form-control" type="file" id="excelFiles" multiple accept=".xlsx, .xls">
+                        <div id="fileListContainer" class="mt-2"><p class="text-muted mb-0">Archivos seleccionados...</p></div>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                        <label for="regionalFilter" class="form-label"><strong>2. Selecciona la Regional (ZONA):</strong></label>
+                        <select id="regionalFilter" class="form-select" disabled><option selected>Añade archivos...</option></select>
+                    </div>
+                    <div class="col-lg-4 mb-3">
+                         <button id="btnVerCiclos" class="btn btn-primary w-100" disabled>3. VER CICLOS</button>
+                    </div>
+                </div>
+                <div id="status" class="mt-2 text-primary"></div>
+                <div id="progress-container" class="mt-3">
+                    <div id="progress-status"></div>
+                    <div class="progress"><div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: SELECCIÓN DE CICLOS -->
+        <div class="card shadow-sm mb-4" id="selectionCard" style="display: none;">
+             <div class="card-header"><h2 class="h5 mb-0">4. Selección de Ciclos</h2></div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-5"><label class="form-label fw-bold">CICLOS ACTUALES (<span id="disponiblesCount">0</span>)</label><select id="disponiblesList" class="form-select transfer-list" multiple></select></div>
+                    <div class="col-md-2 text-center"><button id="btnAgregar" class="btn btn-secondary mb-2 w-100">Agregar >></button><button id="btnQuitar" class="btn btn-secondary w-100"><< Quitar</button></div>
+                    <div class="col-md-5"><label class="form-label fw-bold">CICLOS AGREGADOS (<span id="seleccionadosCount">0</span>)</label><select id="seleccionadosList" class="form-select transfer-list" multiple></select></div>
+                </div>
+                <div class="mt-3 text-center">
+                    <label class="form-label"><strong>5. Elige el proceso y consolida:</strong></label>
+                    <div>
+                        <button id="btnUnoFens" class="btn btn-info mx-1">UNO FENS</button>
+                        <button id="btnMixtoRural" class="btn btn-primary mx-1">CICLO MIXTO RURAL</button>
+                        <button id="btnRural" class="btn btn-secondary mx-1">RURAL (NUEVO)</button>
+                    </div>
+                </div>
+                <div id="selectionStatus" class="mt-2 text-danger fw-bold text-center"></div>
+            </div>
+        </div>
+        
+        <!-- SECCIÓN 3: RESULTADOS FINALES -->
+        <div class="card mt-4 shadow-sm" id="resultsCard" style="display: none;">
+            <div class="card-header"><h2 class="h5 mb-0">Reporte Final Consolidado</h2></div>
+            <div class="card-body">
+                <button id="btnGenerarExcel" class="btn btn-success mb-3">Generar Excel</button>
+                <button id="btnCopiarTabla" class="btn btn-secondary mb-3">COPIAR</button>
+                <button id="btnLimpiar" class="btn btn-warning mb-3 ms-2">LIMPIAR ANÁLISIS</button>
+                <div id="outputTable"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+        let selectedFiles = [], rawExcelData = [], regionFilteredData = [];
+        let regionalColumnIndex = -1;
+        const CHUNK_SIZE = 15000;
+
+        // --- Event Listeners ---
+        document.getElementById('excelFiles').addEventListener('change', handleFileAdd);
+        document.getElementById('fileListContainer').addEventListener('click', handleFileRemove);
+        document.getElementById('btnVerCiclos').addEventListener('click', verCiclos);
+        document.getElementById('btnAgregar').addEventListener('click', transferirCiclos);
+        document.getElementById('btnQuitar').addEventListener('click', transferirCiclos);
+        document.getElementById('btnUnoFens').addEventListener('click', () => consolidarYMostrarResultados('FENS'));
+        document.getElementById('btnMixtoRural').addEventListener('click', () => consolidarYMostrarResultados('MIXTO_RURAL'));
+        document.getElementById('btnRural').addEventListener('click', () => consolidarYMostrarResultados('RURAL'));
+        document.getElementById('btnGenerarExcel').addEventListener('click', generarExcel);
+        document.getElementById('btnCopiarTabla').addEventListener('click', copiarTabla);
+        document.getElementById('btnLimpiar').addEventListener('click', limpiarAnalisisActual);
+        
+        async function consolidarYMostrarResultados(tipoProceso) {
+            const seleccionadosSelect = document.getElementById('seleccionadosList');
+            const selectionStatus = document.getElementById('selectionStatus');
+            if (seleccionadosSelect.options.length === 0) {
+                selectionStatus.textContent = 'Debes agregar ciclos a la lista.';
+                return;
+            }
+            selectionStatus.textContent = '';
+            
+            const ciclosHSeleccionados = new Set(Array.from(seleccionadosSelect.options).map(opt => opt.value));
+            const datosParaProcesar = regionFilteredData.filter(row => row && ciclosHSeleccionados.has(String(row[7])));
+
+            if (datosParaProcesar.length === 0) {
+                selectionStatus.textContent = "No se encontraron filas de datos para los ciclos seleccionados. Proceso detenido.";
+                return;
+            }
+
+            const progressContainer = document.getElementById('progress-container'), progressBar = document.getElementById('progress-bar'), progressStatus = document.getElementById('progress-status');
+            progressContainer.style.display = 'block';
+
+            const onProgressCallback = (processed, total) => {
+                progressStatus.textContent = `Agrupando y contando... Fila ${processed.toLocaleString()} de ${total.toLocaleString()}`;
+                progressBar.style.width = `${(processed / total) * 100}%`;
+            };
+
+            // --- ROUTING DE PROCESOS ---
+            if (tipoProceso === 'RURAL') {
+                // MODIFICACIÓN: Llama a las nuevas funciones específicas para RURAL
+                const dataAgrupada = await agruparYContar_Rural(datosParaProcesar, onProgressCallback);
+                renderizarTablaFinal_Rural(Array.from(dataAgrupada.values()));
+            } else {
+                // Lógica original para FENS y MIXTO_RURAL
+                let valoresAContar;
+                if (tipoProceso === 'FENS') {
+                    valoresAContar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15];
+                } else if (tipoProceso === 'MIXTO_RURAL') {
+                    valoresAContar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 15];
+                } else {
+                    alert("Tipo de proceso desconocido.");
+                    progressContainer.style.display = 'none';
+                    return;
+                }
+                const dataAgrupada = await agruparYContar_Original(datosParaProcesar, valoresAContar, onProgressCallback);
+                renderizarTablaFinal_Original(Array.from(dataAgrupada.values()), valoresAContar);
+            }
+
+            document.getElementById('resultsCard').style.display = 'block';
+            document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth' });
+            progressContainer.style.display = 'none';
+        }
+
+        // --- NUEVA FUNCIÓN DE AGRUPACIÓN PARA LÓGICA RURAL ---
+        async function agruparYContar_Rural(rows, onProgress) {
+            const groupedData = new Map();
+            const valoresAContar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15];
+            
+            await procesarEnLotes(rows, 
+                (chunk) => {
+                    for (const row of chunk) {
+                        const valorOriginalA = row[0] ? String(row[0]) : '';
+                        const soloNumeros = valorOriginalA.replace(/\D/g, '');
+                        if (soloNumeros.length < 3) continue;
+
+                        const key = soloNumeros.substring(0, 3); // La clave es solo los 3 primeros dígitos
+
+                        if (!groupedData.has(key)) {
+                            const conteoInicial = {};
+                            valoresAContar.forEach(v => conteoInicial[v] = 0);
+                            // Se inicializa el grupo con la fecha de la primera fila encontrada
+                            groupedData.set(key, { 
+                                A: key, 
+                                B_Fecha: formatearFecha(row[9]), // Columna J del excel
+                                D_TotalClientes: 0,
+                                conteo_O: conteoInicial 
+                            });
+                        }
+                        
+                        const grupo = groupedData.get(key);
+                        grupo.D_TotalClientes++; // Se cuenta la cantidad de clientes
+                        
+                        const valorO_num = parseInt(row[14], 10); // Columna O del excel
+                        if (!isNaN(valorO_num) && valoresAContar.includes(valorO_num)) {
+                            grupo.conteo_O[valorO_num]++; // Se cuentan los códigos de la columna O
+                        }
+                    }
+                }, onProgress );
+            return groupedData;
+        }
+
+        // --- NUEVA FUNCIÓN DE RENDERIZADO PARA LÓGICA RURAL ---
+        function renderizarTablaFinal_Rural(data) {
+            const outputDiv = document.getElementById('outputTable');
+            const valoresAContar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15];
+            const headerLetras = ['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'];
+            
+            let headersDinamicos = '';
+            for(let i=0; i < valoresAContar.length; i++) {
+                headersDinamicos += `<th>${headerLetras[i]} (Cant. ${valoresAContar[i]})</th>`;
+            }
+            
+            let tableHTML = `<table class="table table-bordered table-striped table-hover table-sm" id="resultsTable">
+                <thead class="table-dark">
+                    <tr><th>A (3 prim.)</th><th>B (Fecha)</th><th>C (Fecha)</th><th>D (Total Clientes)</th>${headersDinamicos}</tr>
+                </thead>
+                <tbody>`;
+            
+            data.sort((a,b) => a.A.localeCompare(b.A)).forEach(item => {
+                const celdasDinamicas = valoresAContar.map(num => {
+                    const count = item.conteo_O[num] || 0;
+                    return `<td>${count > 0 ? count : ''}</td>`;
+                }).join('');
+                
+                tableHTML += `<tr>
+                    <td>${item.A}</td>
+                    <td>${item.B_Fecha}</td>
+                    <td>${item.B_Fecha}</td>
+                    <td>${item.D_TotalClientes}</td>
+                    ${celdasDinamicas}
+                </tr>`;
+            });
+            outputDiv.innerHTML = tableHTML + '</tbody></table>';
+        }
+        
+        // --- FUNCIÓN DE AGRUPACIÓN ORIGINAL (RENOMBRADA) ---
+        async function agruparYContar_Original(rows, valoresAContar, onProgress) {
+            const groupedData = new Map();
+            await procesarEnLotes(rows, 
+                (chunk) => {
+                    for (const row of chunk) {
+                        const valorOriginalA = row[0] ? String(row[0]) : '';
+                        const soloNumeros = valorOriginalA.replace(/\D/g, '');
+                        if (soloNumeros.length < 3) continue;
+
+                        const nuevoA = soloNumeros.substring(0, 3);
+                        const nuevoB = soloNumeros.slice(-3);
+                        const key = `${nuevoA}-${nuevoB}`;
+
+                        if (!groupedData.has(key)) {
+                            const conteoInicial = {};
+                            valoresAContar.forEach(v => conteoInicial[v] = 0);
+                            groupedData.set(key, { A: nuevoA, B: nuevoB, C: formatearFecha(row[9]), D: formatearFecha(row[9]), E_TotalClientes: 0, conteo_O: conteoInicial });
+                        }
+                        
+                        const grupo = groupedData.get(key);
+                        grupo.E_TotalClientes++;
+                        
+                        const valorO_num = parseInt(row[14], 10);
+                        if (!isNaN(valorO_num) && valoresAContar.includes(valorO_num)) {
+                            grupo.conteo_O[valorO_num]++;
+                        }
+                    }
+                }, onProgress );
+            return groupedData;
+        }
+
+        // --- FUNCIÓN DE RENDERIZADO ORIGINAL (RENOMBRADA) ---
+        function renderizarTablaFinal_Original(data, valoresAContar) {
+            const outputDiv = document.getElementById('outputTable');
+            const headersF_S = valoresAContar.map(num => `<th>Cant. ${num}</th>`).join('');
+            
+            let tableHTML = `<table class="table table-bordered table-striped table-hover table-sm" id="resultsTable">
+                <thead class="table-dark">
+                    <tr><th>A (3 Prim.)</th><th>B (3 Últ.)</th><th>C (Fecha)</th><th>D (Fecha)</th><th>E (Total)</th>${headersF_S}</tr>
+                </thead>
+                <tbody>`;
+            
+            data.sort((a,b) => a.A.localeCompare(b.A) || a.B.localeCompare(b.B)).forEach(item => {
+                const celdasF_S = valoresAContar.map(num => {
+                    const count = item.conteo_O[num] || 0;
+                    return `<td>${count > 0 ? count : ''}</td>`;
+                }).join('');
+                
+                tableHTML += `<tr><td>${item.A}</td><td>${item.B}</td><td>${item.C}</td><td>${item.D}</td><td>${item.E_TotalClientes}</td>${celdasF_S}</tr>`;
+            });
+            outputDiv.innerHTML = tableHTML + '</tbody></table>';
+        }
+
+        // --- EL RESTO DE LAS FUNCIONES (SIN CAMBIOS IMPORTANTES) ---
+        
+        function handleFileAdd(event) {
+            Array.from(event.target.files).forEach(file => { if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) selectedFiles.push(file); });
+            event.target.value = ''; updateFileListUI(); preProcesarParaFiltros();
+        }
+
+        function handleFileRemove(event) {
+            if (event.target.dataset.action === 'remove-file') {
+                selectedFiles = selectedFiles.filter(f => f.name !== event.target.dataset.filename);
+                updateFileListUI(); preProcesarParaFiltros();
+            }
+        }
+        
+        function updateFileListUI() {
+            const container = document.getElementById('fileListContainer');
+            container.innerHTML = selectedFiles.length === 0 ? '<p class="text-muted mb-0">Archivos seleccionados...</p>' : selectedFiles.map(file => `<div class="d-flex justify-content-between align-items-center p-1"><span>${file.name}</span><button class="btn-close" data-action="remove-file" data-filename="${file.name}"></button></div>`).join('');
+        }
+
+        async function procesarEnLotes(data, processChunk, onProgress) {
+            let i = 0;
+            const total = data.length;
+            while (i < total) {
+                const chunk = data.slice(i, i + CHUNK_SIZE);
+                processChunk(chunk);
+                i += CHUNK_SIZE;
+                onProgress(Math.min(i, total), total);
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+
+        async function preProcesarParaFiltros() {
+            const statusDiv = document.getElementById('status'), regionalFilter = document.getElementById('regionalFilter'), btnVer = document.getElementById('btnVerCiclos'), progressContainer = document.getElementById('progress-container'), progressBar = document.getElementById('progress-bar'), progressStatus = document.getElementById('progress-status');
+            
+            regionalFilter.disabled = true; btnVer.disabled = true;
+            regionalColumnIndex = -1;
+            document.getElementById('selectionCard').style.display = 'none';
+            document.getElementById('resultsCard').style.display = 'none';
+            
+            if (selectedFiles.length === 0) { statusDiv.textContent = 'Añade archivos para comenzar.'; regionalFilter.innerHTML = '<option>Añade archivos...</option>'; return; }
+            
+            progressContainer.style.display = 'block';
+            statusDiv.textContent = 'Buscando encabezado "ZONA"...';
+            
+            try {
+                const header = await getHeaderRow(selectedFiles[0]);
+                regionalColumnIndex = header.findIndex(cell => cell && String(cell).trim().toUpperCase() === 'ZONA');
+
+                if (regionalColumnIndex === -1) {
+                    throw new Error("No se encontró la columna 'ZONA' en el encabezado (fila 6). Verifica que el nombre sea exacto.");
+                }
+
+                statusDiv.textContent = 'Encabezado "ZONA" encontrado. Leyendo datos de los archivos...';
+                rawExcelData = await leerTodosLosArchivos(selectedFiles);
+                const regionales = new Set();
+                
+                await procesarEnLotes(rawExcelData, 
+                    (chunk) => {
+                        for (const row of chunk) {
+                            if (row) {
+                                const regionalValue = row[regionalColumnIndex];
+                                if (regionalValue !== null && regionalValue !== undefined && String(regionalValue).trim() !== '') {
+                                    regionales.add(String(regionalValue).trim());
+                                }
+                            }
+                        }
+                    },
+                    (processed, total) => {
+                        progressStatus.textContent = `Analizando zonas... Fila ${processed.toLocaleString()} de ${total.toLocaleString()}`;
+                        progressBar.style.width = `${(processed / total) * 100}%`;
+                    }
+                );
+
+                if (regionales.size > 0) {
+                    regionalFilter.innerHTML = '<option value="" selected disabled>Selecciona una opción...</option>';
+                    Array.from(regionales).sort().forEach(r => regionalFilter.innerHTML += `<option value="${r}">${r}</option>`);
+                    regionalFilter.disabled = false; btnVer.disabled = false;
+                    statusDiv.textContent = 'Listo. Selecciona una Zona y haz clic en "VER CICLOS".';
+                } else { 
+                    statusDiv.textContent = 'La columna "ZONA" fue encontrada, pero no contiene datos válidos.';
+                }
+            } catch (error) { statusDiv.textContent = `Error: ${error.message}`; }
+            finally { progressContainer.style.display = 'none'; }
+        }
+        
+        function verCiclos() {
+            const selectedRegion = document.getElementById('regionalFilter').value, statusDiv = document.getElementById('status');
+            if (!selectedRegion) { statusDiv.textContent = 'Error: Debes seleccionar una Zona.'; return; }
+
+            statusDiv.textContent = `Filtrando datos para la zona "${selectedRegion}"...`;
+            document.getElementById('selectionCard').style.display = 'block';
+
+            setTimeout(() => {
+                regionFilteredData = rawExcelData.filter(row => row && String(row[regionalColumnIndex]).trim() === String(selectedRegion).trim());
+                const disponiblesSelect = document.getElementById('disponiblesList');
+                disponiblesSelect.innerHTML = ''; document.getElementById('seleccionadosList').innerHTML = '';
+                
+                if (regionFilteredData.length === 0) { statusDiv.textContent = `No se encontraron datos para la zona "${selectedRegion}".`; updateCounts(); return; }
+                
+                const ciclosUnicosH = new Set(regionFilteredData.map(row => row && row[7]).filter(Boolean).map(String));
+
+                if (ciclosUnicosH.size === 0) { statusDiv.textContent = `No se encontraron ciclos (columna H) en la zona.`; updateCounts(); return; }
+
+                Array.from(ciclosUnicosH).sort().forEach(cicloName => disponiblesSelect.add(new Option(cicloName, cicloName)));
+                
+                updateCounts();
+                statusDiv.textContent = `Mostrando ${ciclosUnicosH.size} ciclos únicos para la zona.`;
+            }, 10);
+        }
+
+        function transferirCiclos(event) {
+            const esAgregar = event.target.id === 'btnAgregar', sourceList = document.getElementById(esAgregar ? 'disponiblesList' : 'seleccionadosList'), destList = document.getElementById(esAgregar ? 'seleccionadosList' : 'disponiblesList');
+            Array.from(sourceList.selectedOptions).forEach(option => destList.add(option));
+            sortSelect(sourceList); sortSelect(destList); updateCounts();
+        }
+
+        function sortSelect(selectElement) {
+            const options = Array.from(selectElement.options);
+            options.sort((a, b) => a.text.localeCompare(b.text));
+            selectElement.innerHTML = ''; options.forEach(option => selectElement.add(option));
+        }
+
+        function updateCounts() {
+            document.getElementById('disponiblesCount').textContent = document.getElementById('disponiblesList').options.length;
+            document.getElementById('seleccionadosCount').textContent = document.getElementById('seleccionadosList').options.length;
+        }
+        
+        function generarExcel() {
+            const table = document.getElementById('resultsTable');
+            if (!table) { alert("No hay tabla para exportar."); return; }
+            const wb = XLSX.utils.table_to_book(table, {sheet: "Reporte Consolidado"});
+            XLSX.writeFile(wb, 'reporte_consolidado.xlsx');
+        }
+        
+        async function copiarTabla() {
+            const tableBody = document.querySelector("#resultsTable tbody");
+            if (!tableBody) { alert("No hay datos en la tabla para copiar."); return; }
+
+            const rows = Array.from(tableBody.querySelectorAll("tr"));
+            const dataToCopy = rows.map(row => Array.from(row.querySelectorAll("td")).map(cell => cell.textContent).join('\t')).join('\n');
+
+            if (!dataToCopy) { alert("No se encontró contenido para copiar."); return; }
+
+            try {
+                await navigator.clipboard.writeText(dataToCopy);
+                const copyButton = document.getElementById('btnCopiarTabla');
+                const originalText = copyButton.textContent;
+                copyButton.textContent = '¡Copiado!'; copyButton.disabled = true;
+                setTimeout(() => { copyButton.textContent = originalText; copyButton.disabled = false; }, 2000);
+            } catch (err) { console.error('Error al copiar: ', err); alert('No se pudo copiar el texto.'); }
+        }
+
+        async function getHeaderRow(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        const rowIndex = 5; 
+                        if (range.e.r < rowIndex) { reject(new Error("Error: El archivo no tiene al menos 6 filas. No se pudo encontrar un encabezado.")); return; }
+                        const headerRow = [];
+                        for (let colIndex = range.s.c; colIndex <= range.e.c; ++colIndex) {
+                            const cellAddress = { c: colIndex, r: rowIndex };
+                            const cellRef = XLSX.utils.encode_cell(cellAddress);
+                            const cell = worksheet[cellRef];
+                            headerRow.push(cell ? cell.v : undefined);
+                        }
+                        resolve(headerRow);
+                    } catch (err) { reject(new Error(`Error leyendo encabezado de ${file.name}: ${err.message}`)); }
+                };
+                reader.onerror = () => reject(new Error(`No se pudo leer ${file.name}`));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+        
+        async function leerTodosLosArchivos(filesArray) {
+            const promises = filesArray.map(file => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, range: 6, blankrows: false });
+                        resolve(jsonData);
+                    } catch (err) { reject(new Error(`Error en ${file.name}: ${err.message}`)); }
+                };
+                reader.onerror = () => reject(new Error(`No se pudo leer ${file.name}`));
+                reader.readAsArrayBuffer(file);
+            }));
+            return (await Promise.all(promises)).flat();
+        }
+
+        function formatearFecha(dateValue) {
+            if (dateValue instanceof Date && !isNaN(dateValue)) return new Intl.DateTimeFormat('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(dateValue);
+            return dateValue ? String(dateValue) : '';
+        }
+
+        function limpiarAnalisisActual() {
+            const resultsCard = document.getElementById('resultsCard');
+            if (resultsCard.style.display === 'none') return; 
+            resultsCard.style.display = 'none';
+            document.getElementById('outputTable').innerHTML = '';
+
+            const disponiblesList = document.getElementById('disponiblesList');
+            const seleccionadosList = document.getElementById('seleccionadosList');
+
+            Array.from(seleccionadosList.options).forEach(option => {
+                disponiblesList.add(option);
+            });
+
+            sortSelect(disponiblesList);
+            updateCounts();
+
+            document.getElementById('status').textContent = 'Análisis anterior limpiado. Puede seleccionar nuevos ciclos para un nuevo reporte.';
+            document.getElementById('selectionStatus').textContent = '';
+            document.getElementById('selectionCard').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
