@@ -58,6 +58,8 @@
             font-size: 1.5rem;
             font-weight: bold;
             flex-shrink: 0;
+            cursor: pointer; /* AÑADIDO: Para que el cursor cambie a una mano */
+            user-select: none; /* AÑADIDO: Para que la 'H' no se pueda seleccionar */
         }
 
         .sidebar-header h2 {
@@ -191,7 +193,7 @@
         .sidebar.collapsed #sidebar-toggle svg {
             transform: rotate(180deg);
         }
-
+        
         @media (max-width: 768px) {
             .sidebar.collapsed {
                 width: 100%;
@@ -203,7 +205,8 @@
 <body>
     <nav class="sidebar">
         <div class="sidebar-header">
-            <div class="logo">H</div>
+            <!-- AÑADIDO: id="logo-toggle" para controlar el click desde JS -->
+            <div class="logo" id="logo-toggle" title="Colapsar panel">H</div>
             <h2>Herramientas</h2>
         </div>
         <ul class="tool-list">
@@ -221,8 +224,7 @@
 
             <div class="list-divider"></div>
 
-            <!-- ENLACE CORREGIDO: ahora es un "tool-link" -->
-            <li><a href="https://script.google.com/macros/s/AKfycbyWqjGdR0kdTvBTiYMDZ0o14nSVOA8opZum-2goxP0gr9oztae9YTPGvxrx4c-ol7Es/exec" class="tool-link"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-4.5 0V6.375c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 019 10.5z" /></svg><span>PENDIENTES SIRIUS</span></a></li>
+            <li><a href="https://script.google.com/macros/s/AKfycbyWqjGdR0kdTvBTiYMDZ0o14nSVOA8opZum-2goxP0gr9oztae9YTPGvxrx4c-ol7Es/exec" target="_blank" rel="noopener noreferrer"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-4.5 0V6.375c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 019 10.5z" /></svg><span>PENDIENTES SIRIUS</span></a></li>
         </ul>
         
         <div class="sidebar-footer">
@@ -240,34 +242,44 @@
         document.addEventListener('DOMContentLoaded', function() {
             const sidebar = document.querySelector('.sidebar');
             const toggleBtn = document.getElementById('sidebar-toggle');
+            const logoToggle = document.getElementById('logo-toggle'); // AÑADIDO: Seleccionamos el logo
             const links = document.querySelectorAll('.tool-link');
             const iframe = document.getElementById('toolFrame');
 
+            // --- AÑADIDO: Función reutilizable para colapsar/expandir ---
+            const toggleSidebar = () => {
+                sidebar.classList.toggle('collapsed');
+                // Guardar el estado en el almacenamiento local (más conciso)
+                const isCollapsed = sidebar.classList.contains('collapsed');
+                localStorage.setItem('sidebarCollapsed', isCollapsed);
+            };
+
+            // --- Lógica para colapsar el panel ---
             if (toggleBtn) {
-                toggleBtn.addEventListener('click', () => {
-                    sidebar.classList.toggle('collapsed');
-                    if (sidebar.classList.contains('collapsed')) {
-                        localStorage.setItem('sidebarCollapsed', 'true');
-                    } else {
-                        localStorage.setItem('sidebarCollapsed', 'false');
-                    }
-                });
+                toggleBtn.addEventListener('click', toggleSidebar);
+            }
+            // AÑADIDO: Añadimos el mismo evento al logo
+            if (logoToggle) {
+                logoToggle.addEventListener('click', toggleSidebar);
             }
 
+            // --- Lógica para recordar el estado del panel ---
             if (localStorage.getItem('sidebarCollapsed') === 'true') {
                 sidebar.classList.add('collapsed');
             }
 
+            // --- Lógica para los enlaces internos ---
             links.forEach(link => {
                 link.addEventListener('click', function(e) {
-                    // Prevenir el comportamiento por defecto para TODOS los .tool-link
-                    e.preventDefault();
-                    
-                    links.forEach(l => l.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    const url = this.getAttribute('href');
-                    iframe.src = url;
+                    if (this.getAttribute('target') !== '_blank') {
+                        e.preventDefault();
+                        
+                        links.forEach(l => l.classList.remove('active'));
+                        this.classList.add('active');
+                        
+                        const url = this.getAttribute('href');
+                        iframe.src = url;
+                    }
                 });
             });
         });
