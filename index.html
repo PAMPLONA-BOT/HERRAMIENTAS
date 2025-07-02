@@ -224,7 +224,10 @@
 
             <div class="list-divider"></div>
 
-            <li><a href="https://script.google.com/macros/s/AKfycbyWqjGdR0kdTvBTiYMDZ0o14nSVOA8opZum-2goxP0gr9oztae9YTPGvxrx4c-ol7Es/exec" target="_blank" rel="noopener noreferrer"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-4.5 0V6.375c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 019 10.5z" /></svg><span>PENDIENTES SIRIUS</span></a></li>
+            <li><a href="https://script.google.com/macros/s/AKfycbyWqjGdR0kdTvBTiYMDZ0o14nSVOA8opZum-2goxP0gr9oztae9YTPGvxrx4c-ol7Es/exec" target="_blank" rel="noopener noreferrer" class="tool-link"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-4.5 0V6.375c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 019 10.5z" /></svg><span>PENDIENTES SIRIUS</span></a></li>
+            <!-- INICIO: BOTÓN AÑADIDO -->
+            <li><a href="https://script.google.com/macros/s/AKfycbxryisTwVjyiWyOuGQUAFxnhg33P0Y5T8RQavDMelQceLvwzUGUk9M3R6H0pjJrMSbS/exec" target="_blank" rel="noopener noreferrer" class="tool-link"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>CONTROL FIN DE LABOR</span></a></li>
+            <!-- FIN: BOTÓN AÑADIDO -->
         </ul>
         
         <div class="sidebar-footer">
@@ -271,6 +274,7 @@
             // --- Lógica para los enlaces internos ---
             links.forEach(link => {
                 link.addEventListener('click', function(e) {
+                    // Solo previene la acción por defecto si NO es un enlace externo
                     if (this.getAttribute('target') !== '_blank') {
                         e.preventDefault();
                         
