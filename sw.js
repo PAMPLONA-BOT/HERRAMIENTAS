@@ -15,6 +15,7 @@ const FILES_TO_CACHE = [
   `${REPO_NAME}/historico_analizador_tiempos.html`,
   `${REPO_NAME}/finalizador_analisis.html`,
   `${REPO_NAME}/lecturas-json.html`,
+  `${REPO_NAME}/maestro3.0.html`,
   `${REPO_NAME}/sirius_total_funcionable.html`,
   `${REPO_NAME}/plantilla_revisiones.xlsx`
 ];
