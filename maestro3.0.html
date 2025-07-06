@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Tabla Avanzado</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 10px; background-color: #f4f4f9; }
+        h1 { text-align: center; color: #333; font-size: 24px; margin-bottom: 15px; }
+        .controls { gap: 10px; margin-bottom: 15px; padding: 10px; }
+        input[type="date"], button { padding: 6px 10px; font-size: 13px; }
+        th, td { padding: 2px 4px; font-size: 10px; }
+        thead tr { height: 140px; }
+        .controls { display: flex; flex-wrap: wrap; align-items: center; background-color: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .controls label { font-weight: bold; }
+        input[type="date"], button { border-radius: 5px; border: 1px solid #ccc; cursor: pointer; }
+        button { background-color: #007bff; color: white; border-color: #007bff; transition: background-color 0.3s; }
+        button:hover { background-color: #0056b3; }
+        #load-technicians-btn { background-color: #17a2b8; border-color: #17a2b8; }
+        #load-technicians-btn:hover { background-color: #138496; }
+        #upload-routes-btn { background-color: #28a745; border-color: #28a745; }
+        #upload-routes-btn:hover { background-color: #218838; }
+        #upload-activities-btn { background-color: #ff8c00; border-color: #ff8c00; }
+        #upload-activities-btn:hover { background-color: #cc7000; }
+        #copy-btn.copied { background-color: #28a745; border-color: #28a745; }
+        .table-container { width: 100%; overflow-x: auto; border: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+        th, td { border: 1px solid #ddd; text-align: left; }
+        td[contenteditable="true"] { background-color: #fff9c4; }
+        td[contenteditable="true"]:focus { background-color: #fff176; outline: 2px solid #007bff; }
+        thead { position: sticky; top: 0; z-index: 10; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .header-grey { background-color: #d9d9d9; vertical-align: middle; }
+        .header-yellow, .header-blue, .header-green, .header-red {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            vertical-align: middle;
+            text-align: center;
+        }
+        .header-yellow { background-color: #ffff00; } 
+        .header-blue { background-color: #bde1ff; } 
+        .header-green { background-color: #c6e0b4; } 
+        .header-red { background-color: #ff5757; color: white; }
+        .delete-x { color: #dc3545; font-weight: bold; text-align: center; cursor: pointer; user-select: none; }
+        .delete-x:hover { color: #a71d2a; }
+    </style>
+</head>
+<body>
+
+    <h1>Gestor de Consolidación</h1>
+    <div class="controls">
+        <input type="file" id="technicians-file-input" accept=".xlsx, .xls" style="display: none;">
+        <button id="load-technicians-btn">Cargar Técnicos</button>
+        <label for="initial-date">Fecha Inicial:</label>
+        <input type="date" id="initial-date">
+        <button id="duplicate-day-btn">Duplicar Día</button>
+        <input type="file" id="routes-file-input" accept=".xlsx, .xls" style="display: none;">
+        <button id="upload-routes-btn">Cargar Datos de Rutas</button>
+        <input type="file" id="activities-file-input" accept=".xlsx, .xls" style="display: none;">
+        <button id="upload-activities-btn">Subir Actividades</button>
+        <button id="copy-btn">Copiar Tabla</button>
+    </div>
+
+    <div class="table-container">
+        <table id="main-table">
+             <thead>
+                <tr>
+                    <th class="header-grey" style="width: 20px;"></th> 
+                    <th class="header-grey">FECHA DE EJECUCION</th><th class="header-grey">MEDIO PARA EJECUCION</th><th class="header-grey">PROCESO</th><th class="header-grey">CARGO</th><th class="header-grey">CEDULA</th><th class="header-grey">NOMBRE TECNICO</th><th class="header-grey">MUNICIPIO</th><th class="header-grey">UBICACIÓN</th><th class="header-grey">CICLO</th><th class="header-grey">SECCION</th><th class="header-grey">CUENTAS</th>
+                    <th class="header-blue">Lectura de medidores</th><th class="header-blue">Lectura de medidores con revisión precrítica</th><th class="header-blue">Facturacion en sitio</th><th class="header-blue">FENS + Suspensión Tipo B</th><th class="header-blue">Entrega facturas SPD con sus anexos</th><th class="header-blue">Lectura y entrega simultánea</th><th class="header-blue">preavisos de suspensión</th><th class="header-blue">preavisos de suspensión NO EFECTIVA</th><th class="header-blue">SCR tipo B</th><th class="header-blue">SCR tipo B NO EFECTIVA</th><th class="header-blue">SCR tipo C</th><th class="header-blue">SCR tipo C NO EFECTIVA</th><th class="header-blue">SCR tipo E - tensión 2</th><th class="header-blue">SCR tipo E - tensión 2 NO EFECTIVA</th><th class="header-blue">Revisión técnica Consumos</th><th class="header-blue">Revisión técnica por desviación</th><th class="header-blue">Revisión técnica especializada</th><th class="header-blue">Revisión técnica - Lectura AGPE</th><th class="header-blue">Revisión Técnica NO EFECTIVA</th><th class="header-blue">Revisión comercial</th><th class="header-blue">Revisión Comercial Relectura</th><th class="header-blue">Revisión Comercial NO EFECTIVA</th><th class="header-blue">Liq de actas de recuperación de consumos</th><th class="header-blue">Visita Gestor Cartera</th>
+                    <th class="header-green">Lectura de medidores</th><th class="header-green">Lectura de medidores con revisión precrítica</th><th class="header-green">Facturacion en sitio</th><th class="header-green">FENS + Suspensión Tipo B</th><th class="header-green">Entrega facturas SPD con sus anexos</th><th class="header-green">Lectura y entrega simultánea</th><th class="header-green">preavisos de suspensión</th><th class="header-green">preavisos de suspensión NO EFECTIVA</th><th class="header-green">SCR tipo B</th><th class="header-green">SCR tipo B NO EFECTIVA</th><th class="header-green">SCR tipo C</th><th class="header-green">SCR tipo C NO EFECTIVA</th><th class="header-green">SCR tipo E - tensión 2</th><th class="header-green">SCR tipo E - tensión 2 NO EFECTIVA</th><th class="header-green">Revisión técnica Consumos</th><th class="header-green">Revisión técnica por desviación</th><th class="header-green">Revisión técnica especializada</th><th class="header-green">Revisión técnica - Lectura AGPE</th><th class="header-green">Revisión Técnica NO EFECTIVA</th><th class="header-green">Revisión comercial</th><th class="header-green">Revisión Comercial Relectura</th><th class="header-green">Revisión Comercial NO EFECTIVA</th><th class="header-green">Liq de actas de recuperación de consumos</th><th class="header-green">Visita Gestor Cartera</th>
+                    <th class="header-yellow">RUTA</th><th class="header-red">VEHICULO</th><th class="header-red">ALIMENTACION</th><th class="header-red">PERNOCTADA</th>
+                    <th class="header-red">TRANSPORTE</th>
+                    <th class="header-grey">HORA SALIDA</th>
+                    <th class="header-grey">HORA INICIO</th>
+                    <th class="header-grey">HORA FIN</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // --- CONFIGURACIÓN Y CONSTANTES ---
+    const COLUMN_INDICES = {
+        FECHA_EJECUCION: 1, CEDULA: 5, MUNICIPIO: 7, UBICACION: 8, CICLO: 9, SECCION: 10, CUENTAS: 11,
+        LECTURA_MEDIDORES_AZUL: 12, FACTURACION_SITIO_AZUL: 14, LECTURA_ENTREGA_AZUL: 17,
+        LECTURA_MEDIDORES_VERDE: 36, FACTURACION_SITIO_VERDE: 38, LECTURA_ENTREGA_VERDE: 41,
+        HORA_SALIDA: 65, HORA_FIN: 67
+    };
+
+    // --- ELEMENTOS DEL DOM ---
+    const dateInput = document.getElementById('initial-date');
+    const duplicateBtn = document.getElementById('duplicate-day-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const tableBody = document.getElementById('table-body');
+    const loadTechniciansBtn = document.getElementById('load-technicians-btn');
+    const techniciansFileInput = document.getElementById('technicians-file-input');
+    const uploadRoutesBtn = document.getElementById('upload-routes-btn');
+    const routesFileInput = document.getElementById('routes-file-input');
+    const uploadActivitiesBtn = document.getElementById('upload-activities-btn');
+    const activitiesFileInput = document.getElementById('activities-file-input');
+
+    // --- ESTADO DE LA APLICACIÓN ---
+    let originalTechniciansData = []; // Variable para guardar la lista original de técnicos
+
+    // --- FUNCIONES AUXILIARES ---
+    const createTechRow = (techData, dateStr) => { const row = document.createElement('tr'); const medio = techData['MEDIO PARA EJECUCION'] || techData.medio || ''; const proceso = techData['PROCESO'] || techData.proceso || ''; const cargo = techData['CARGO'] || techData.cargo || ''; const cedula = techData['CEDULA'] || techData.cedula || ''; const nombre = techData['NOMBRE TECNICO'] || techData.nombre || ''; row.innerHTML = `<td class="delete-x" title="Eliminar Fila">X</td><td>${dateStr}</td><td>${medio}</td><td>${proceso}</td><td>${cargo}</td><td>${cedula}</td><td>${nombre}</td><td></td><td></td><td contenteditable="true"></td><td contenteditable="true"></td><td></td>${'<td></td>'.repeat(48)}${'<td contenteditable="true"></td>'.repeat(4)}${'<td contenteditable="true"></td>'.repeat(4)}`; return row; };
+    const updateUbicacion = (row) => { let blueTotal = 0, greenTotal = 0; const blueStart = COLUMN_INDICES.LECTURA_MEDIDORES_AZUL, greenStart = COLUMN_INDICES.LECTURA_MEDIDORES_VERDE, numActivityCols = 24; for (let i = blueStart; i < blueStart + numActivityCols; i++) blueTotal += parseInt(row.cells[i].innerText, 10) || 0; for (let i = greenStart; i < greenStart + numActivityCols; i++) greenTotal += parseInt(row.cells[i].innerText, 10) || 0; if (blueTotal > greenTotal) row.cells[COLUMN_INDICES.UBICACION].innerText = 'U'; else if (greenTotal > blueTotal) row.cells[COLUMN_INDICES.UBICACION].innerText = 'R'; };
+
+    // --- INICIALIZACIÓN ---
+    dateInput.value = new Date().toISOString().split('T')[0];
+
+    // --- LÓGICA DE EVENTOS ---
+    loadTechniciansBtn.addEventListener('click', () => techniciansFileInput.click());
+    
+    techniciansFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = e => {
+            try {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const techniciansData = XLSX.utils.sheet_to_json(worksheet, {raw: false});
+                
+                // **MEJORA**: Guardar la lista original y limpiar la tabla
+                originalTechniciansData = techniciansData;
+                tableBody.innerHTML = ''; 
+
+                const selectedDate = dateInput.value;
+                originalTechniciansData.forEach(tech => tableBody.appendChild(createTechRow(tech, selectedDate)));
+                alert(`${originalTechniciansData.length} técnicos cargados correctamente.`);
+
+            } catch (err) { console.error(err); alert("Error al leer el archivo de técnicos."); }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    });
+
+    dateInput.addEventListener('change', function() {
+        const selectedDate = this.value; if (!selectedDate) return;
+        tableBody.querySelectorAll('tr').forEach(row => { row.cells[COLUMN_INDICES.FECHA_EJECUCION].innerText = selectedDate; });
+    });
+
+    duplicateBtn.addEventListener('click', function() {
+        // **MEJORA**: Usar la lista original de técnicos en lugar de las filas actuales.
+        if (originalTechniciansData.length === 0) {
+            alert("Por favor, cargue primero un archivo de técnicos antes de duplicar.");
+            return;
+        }
+
+        // La lógica para encontrar la última fecha y calcular la siguiente sigue igual
+        let latestDateStr = dateInput.value; // Valor por defecto
+        if (tableBody.rows.length > 0) {
+             latestDateStr = Array.from(tableBody.rows).reduce((maxDate, row) => {
+                const currentDate = row.cells[COLUMN_INDICES.FECHA_EJECUCION].innerText;
+                return currentDate > maxDate ? currentDate : maxDate;
+            }, '1970-01-01');
+        }
+        
+        const baseDate = new Date(latestDateStr + 'T12:00:00Z');
+        baseDate.setDate(baseDate.getDate() + 1);
+        const newDateStr = baseDate.toISOString().split('T')[0];
+
+        // Añadir una copia del grupo original con la nueva fecha
+        originalTechniciansData.forEach(tech => tableBody.appendChild(createTechRow(tech, newDateStr)));
+    });
+
+    tableBody.addEventListener('click', e => { if (e.target.classList.contains('delete-x')) e.target.closest('tr').remove(); });
+    
+    copyBtn.addEventListener('click', function() { const data = Array.from(tableBody.rows).map(row => Array.from(row.cells).slice(1).map(cell => `"${cell.innerText.replace(/"/g, '""').replace(/\s+/g, ' ').trim()}"`).join('\t')).join('\n'); navigator.clipboard.writeText(data).then(() => { this.innerText = '¡Copiado!'; this.classList.add('copied'); setTimeout(() => { this.innerText = 'Copiar Tabla'; this.classList.remove('copied'); }, 2000); }); });
+    
+    tableBody.addEventListener('paste', function(e) { e.preventDefault(); const text = e.clipboardData.getData('text/plain'); const startCell = e.target.closest('td'); if (!startCell || startCell.cellIndex === 0) return; const startRowIndex = startCell.parentElement.rowIndex - 1; const startCellIndex = startCell.cellIndex; text.split('\n').forEach((rowText, rowIndex) => { const currentRow = tableBody.rows[startRowIndex + rowIndex]; if (!currentRow) return; rowText.split('\t').forEach((cellText, cellIndex) => { const targetCell = currentRow.cells[startCellIndex + cellIndex]; if (targetCell && targetCell.isContentEditable) targetCell.innerText = cellText.trim().replace(/"/g, ''); }); }); });
+
+    uploadRoutesBtn.addEventListener('click', () => routesFileInput.click());
+    const processRouteDataFile = (excelData) => { if (excelData.length < 2) return alert("El archivo Excel de rutas está vacío."); const headers = excelData[0].map(h => String(h).trim().toLowerCase()); const dataRows = excelData.slice(1); const requiredHeaders = ['ciclo', 'rutalectura', 'dmunicipio', 'dcodigoarea']; const headerIndices = {}; for (const header of requiredHeaders) { const index = headers.indexOf(header); if (index === -1) return alert(`Error: Falta la columna "${header.toUpperCase()}" en el archivo Excel de rutas.`); headerIndices[header] = index; } let updatedRowsCount = 0; Array.from(tableBody.rows).forEach(htmlRow => { const htmlCiclo = htmlRow.cells[COLUMN_INDICES.CICLO].innerText.trim(); const htmlSeccion = htmlRow.cells[COLUMN_INDICES.SECCION].innerText.trim(); if (!htmlCiclo || !htmlSeccion) return; const matchingExcelRows = dataRows.filter(excelRow => { const excelCiclo = String(excelRow[headerIndices.ciclo]).trim(); const excelRuta = String(excelRow[headerIndices.rutalectura]).trim(); const excelSeccion = excelRuta.length >= 6 ? excelRuta.substring(3, 6) : ''; return htmlCiclo === excelCiclo && htmlSeccion === excelSeccion; }); if (matchingExcelRows.length > 0) { updatedRowsCount++; htmlRow.cells[COLUMN_INDICES.MUNICIPIO].innerText = matchingExcelRows[0][headerIndices.dmunicipio]; htmlRow.cells[COLUMN_INDICES.CUENTAS].innerText = matchingExcelRows.length; let counters = { lectMedUrb: 0, lectMedRur: 0, factSitUrb: 0, factSitRur: 0, lectEntUrb: 0, lectEntRur: 0 }; matchingExcelRows.forEach(excelRow => { const ciclo = parseInt(excelRow[headerIndices.ciclo], 10); const area = String(excelRow[headerIndices.dcodigoarea]).toLowerCase(); if ([225, 290].includes(ciclo)) { area.includes('urbano') ? counters.lectMedUrb++ : counters.lectMedRur++; } else if ([240, 241].includes(ciclo)) { area.includes('urbano') ? counters.lectEntUrb++ : counters.lectEntRur++; } else { area.includes('urbano') ? counters.factSitUrb++ : counters.factSitRur++; } }); htmlRow.cells[COLUMN_INDICES.LECTURA_MEDIDORES_AZUL].innerText = counters.lectMedUrb || ''; htmlRow.cells[COLUMN_INDICES.LECTURA_MEDIDORES_VERDE].innerText = counters.lectMedRur || ''; htmlRow.cells[COLUMN_INDICES.FACTURACION_SITIO_AZUL].innerText = counters.factSitUrb || ''; htmlRow.cells[COLUMN_INDICES.FACTURACION_SITIO_VERDE].innerText = counters.factSitRur || ''; htmlRow.cells[COLUMN_INDICES.LECTURA_ENTREGA_AZUL].innerText = counters.lectEntUrb || ''; htmlRow.cells[COLUMN_INDICES.LECTURA_ENTREGA_VERDE].innerText = counters.lectEntRur || ''; updateUbicacion(htmlRow); } }); if (updatedRowsCount > 0) alert(`Proceso completado. Se actualizaron los datos para ${updatedRowsCount} fila(s).`); else alert("No se encontraron coincidencias entre la tabla y el archivo de rutas."); };
+    routesFileInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = e => { try { const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' }); const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" }); processRouteDataFile(excelData); } catch (err) { console.error(err); alert("Error al leer el archivo de rutas."); } }; reader.readAsArrayBuffer(file); event.target.value = ''; });
+
+    // --- FUNCIONALIDAD "SUBIR ACTIVIDADES" (SIN CAMBIOS) ---
+    uploadActivitiesBtn.addEventListener('click', () => activitiesFileInput.click());
+    activitiesFileInput.addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = e => { try { const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true }); const worksheet = workbook.Sheets[workbook.SheetNames[0]]; const excelData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" }); processActivitiesFile(excelData); } catch (err) { console.error("Error al leer archivo de actividades:", err); alert("Error al procesar el archivo de actividades."); } }; reader.readAsArrayBuffer(file); event.target.value = ''; });
+    const normalizeCedula = (value) => (value === null || value === undefined) ? "" : String(value).trim().replace(/\D/g, '');
+    const normalizeDate = (value) => { if (!value) return null; if (value instanceof Date) { const tzOffset = value.getTimezoneOffset() * 60000; return new Date(value.getTime() + tzOffset).toISOString().split('T')[0]; } if (typeof value === 'number' && value > 1) { try { return XLSX.SSF.format('yyyy-mm-dd', value); } catch (e) {} } if (typeof value === 'string') { const str = value.trim(); if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10); const parts = str.match(/(\d+)/g); if (parts && parts.length >= 3) { let y, m, d; if (String(parts[2]).length === 4) { [d, m, y] = parts; } else if (String(parts[0]).length === 4) { [y, m, d] = parts; } else { [d, m, y] = parts; } if (y && m && d) { return `${String(y).slice(-4)}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; } } } return null; };
+    const normalizeTime = (value) => { if (!value) return ""; if (value instanceof Date) { const hours = String(value.getHours()).padStart(2, '0'); const minutes = String(value.getMinutes()).padStart(2, '0'); return `${hours}:${minutes}`; } if (typeof value === 'number' && value < 1 && value > 0) { try { return XLSX.SSF.format('hh:mm', value); } catch (e) {} } if (typeof value === 'string') { const match = value.match(/(\d{1,2}:\d{2})/); if (match) return match[0]; } return ""; };
+    const findHeaderIndexIntelligently = (headerList, keywordSets) => { for (const keywords of keywordSets) { const foundIndex = headerList.findIndex(header => keywords.every(keyword => header.includes(keyword))); if (foundIndex !== -1) return foundIndex; } return -1; };
+    function processActivitiesFile(excelData) {
+        if (excelData.length < 2) return alert("El archivo de actividades está vacío.");
+        const normalizedHeaders = excelData[0].map(h => String(h).trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' '));
+        const possibleHeadersMap = { cedula: [['cedula']], fecha: [['fecha', 'salida'], ['fecha', 'ejecucion'], ['fecha']], ciclo: [['ciclo']], seccion: [['seccion']], horaSalida: [['hora', 'salida']], horaFin: [['hora', 'fin']] };
+        const headerIndices = { cedula: findHeaderIndexIntelligently(normalizedHeaders, possibleHeadersMap.cedula), fecha: findHeaderIndexIntelligently(normalizedHeaders, possibleHeadersMap.fecha), ciclo: findHeaderIndexIntelligently(normalizedHeaders, possibleHeadersMap.ciclo), seccion: findHeaderIndexIntelligently(normalizedHeaders, possibleHeadersMap.seccion), horaSalida: findHeaderIndexIntelligently(normalizedHeaders, possibleHeadersMap.horaSalida), horaFin: findHeaderIndexIntelligently(normalizedHeaders, possibleHeadersMap.horaFin) };
+        const missingHeaders = Object.entries(headerIndices).filter(([, value]) => value === -1).map(([key]) => key);
+        if (missingHeaders.length > 0) return alert(`Error: No se encontraron las columnas: ${missingHeaders.join(', ')}.`);
+        const activitiesMap = new Map();
+        const dataRows = excelData.slice(1);
+        dataRows.forEach(row => {
+            const cedula = normalizeCedula(row[headerIndices.cedula]);
+            const fecha = normalizeDate(row[headerIndices.fecha]);
+            if (cedula && fecha) {
+                const key = `${cedula}_${fecha}`;
+                activitiesMap.set(key, { ciclo: String(row[headerIndices.ciclo] || '').trim(), seccion: String(row[headerIndices.seccion] || '').trim(), horaSalida: normalizeTime(row[headerIndices.horaSalida]), horaFin: normalizeTime(row[headerIndices.horaFin]), });
+            }
+        });
+        if (activitiesMap.size === 0) return alert("No se pudo leer ninguna fila con Cédula y Fecha válidas del archivo Excel. Verifique los datos.");
+        let updatedRowsCount = 0;
+        Array.from(tableBody.rows).forEach(htmlRow => {
+            const htmlCedula = normalizeCedula(htmlRow.cells[COLUMN_INDICES.CEDULA].innerText);
+            const htmlFecha = normalizeDate(htmlRow.cells[COLUMN_INDICES.FECHA_EJECUCION].innerText);
+            if (htmlCedula && htmlFecha) {
+                const key = `${htmlCedula}_${htmlFecha}`;
+                if (activitiesMap.has(key)) {
+                    const data = activitiesMap.get(key);
+                    htmlRow.cells[COLUMN_INDICES.CICLO].innerText = data.ciclo;
+                    htmlRow.cells[COLUMN_INDICES.SECCION].innerText = data.seccion;
+                    htmlRow.cells[COLUMN_INDICES.HORA_SALIDA].innerText = data.horaSalida;
+                    htmlRow.cells[COLUMN_INDICES.HORA_FIN].innerText = data.horaFin;
+                    updatedRowsCount++;
+                }
+            }
+        });
+        alert(`Carga de actividades completada. Se actualizaron ${updatedRowsCount} fila(s) por Cédula y Fecha.`);
+    }
+});
+</script>
+
+</body>
+</html>
