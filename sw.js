@@ -17,6 +17,8 @@ const FILES_TO_CACHE = [
   `${REPO_NAME}/lecturas-json.html`,
   `${REPO_NAME}/maestro3.0.html`,
   `${REPO_NAME}/sirius_total_funcionable.html`,
+  `${REPO_NAME}/USUARIOS JSON.html`,
+  `${REPO_NAME}/SSCAR CLIENTES.xlsx`,
   `${REPO_NAME}/plantilla_revisiones.xlsx`
 ];
 
